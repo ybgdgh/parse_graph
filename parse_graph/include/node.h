@@ -44,6 +44,7 @@
 // opencv
 #include <opencv2/highgui/highgui.hpp>
 #include <cv_bridge/cv_bridge.h>
+#include "image_geometry/pinhole_camera_model.h"
 
 using namespace std;
 using namespace Eigen;
@@ -64,6 +65,8 @@ class PARSE
     void CameraInfo(const sensor_msgs::CameraInfo& camera);
 
     void depth_Callback(const sensor_msgs::ImageConstPtr& depth_msg);
+
+    void color_Callback(const sensor_msgs::ImageConstPtr& depth_msg);
 
     void init_marker();
 
@@ -93,6 +96,8 @@ class PARSE
     Eigen::Isometry3d T_base_to_apri = Eigen::Isometry3d::Identity();
 
     double cx,cy,fx,fy;
+    std::map<string,Vector2d> object_2d_pose;
+    std::map<string,Vector2d> object_2d_ar_pose;
 
     bool support_flag = false, on_flag = false;
     std::map<string,Vector9d> Support_box;
@@ -100,6 +105,8 @@ class PARSE
 
     bool TV=false,desk=false,computer=false,chair=false,air_conditioner=false,floor_=false;
 
+    boost::property_tree::ptree knowledgegraph ;
+    boost::property_tree::ptree knowledgegraph_object ;
 
  
     tf::TransformListener listener;
@@ -107,9 +114,9 @@ class PARSE
     ros::Subscriber sub_ar_track;
     ros::Subscriber sub_orb_pose;
 
-    ros::Subscriber sub_darknet,sub_CameraInfo,sub_depth_camera;
+    ros::Subscriber sub_darknet,sub_CameraInfo,sub_depth_camera,sub_color_camera;
 
-    ros::Publisher pub_ar_pose;
+    ros::Publisher pub_ar_pose,pub_pic;
     tf::TransformBroadcaster tf_pub_;
     
     ros::NodeHandle nh_;

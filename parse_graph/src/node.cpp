@@ -11,12 +11,17 @@ PARSE::PARSE(ros::NodeHandle nh,ros::NodeHandle np)
     //订阅odom和激光的话题
     sub_ar_track = nh_.subscribe("tag_detections", 10, &PARSE::tag_detections_mark,this);
     sub_orb_pose = nh_.subscribe("orb_slam2_rgbd/pose", 30, &PARSE::orb_pose,this);
-    sub_darknet = nh_.subscribe("darknet_ros/bounding_boxes", 30, &PARSE::darknet_Bbox,this);
-    sub_CameraInfo = nh_.subscribe("camera/depth/camera_info", 30, &PARSE::CameraInfo,this);
-    sub_depth_camera = nh_.subscribe("/camera/aligned_depth_to_color/image_raw", 30, &PARSE::depth_Callback,this);
+    sub_darknet = nh_.subscribe("darknet_ros/bounding_boxes", 10, &PARSE::darknet_Bbox,this);
+    sub_CameraInfo = nh_.subscribe("camera/color/camera_info", 10, &PARSE::CameraInfo,this);
+    sub_depth_camera = nh_.subscribe("/camera/aligned_depth_to_color/image_raw", 10, &PARSE::depth_Callback,this);
 
-    // ros::Publisher pub_ar_pose = nh_.advertise<geometry_msgs::PoseStamped>("ar_pose", 10);
+    sub_color_camera = nh_.subscribe("/camera/color/image_raw", 30, &PARSE::color_Callback,this);
+
+    pub_pic = nh_.advertise<sensor_msgs::Image>("kg_camera", 10);
     // ros::Publisher marker_pub = nh_.advertise<visualization_msgs::Marker>("visualization_marker", 1);
+
+    knowledgegraph = PARSE::loadPoseFile("/home/ybg/knowledgegraph.json");
+    knowledgegraph_object = knowledgegraph.get_child("object");
 
     std::cout << "init finish" << std::endl;
    
@@ -28,9 +33,6 @@ PARSE::~PARSE()
     {
         Json::Value root;
         root["name"] = "meeting_room";
-
-        boost::property_tree::ptree knowledgegraph = PARSE::loadPoseFile("/home/ybg/knowledgegraph.json");
-        boost::property_tree::ptree knowledgegraph_object = knowledgegraph.get_child("object");
 
         Json::Value attribute;
 
@@ -136,11 +138,6 @@ void PARSE::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
     Eigen::Vector3d trans_Bbox;
     Eigen::Quaterniond quat_Bbox;
 
-    // cx = 617.8583984375;
-    // cy = 618.0875244140625;
-    // fx = 327.5780944824219;
-    // fy = 242.83938598632812;
-
     // cout << "Bound_msg : " << Bound_msg.header.frame_id << endl;
     tf::StampedTransform transform_Bbox;
     try
@@ -167,6 +164,7 @@ void PARSE::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
     T_base_to_camera.pretranslate ( trans_Bbox );
 
     std::stringstream sss;
+    object_2d_pose.clear();
     for(const darknet_ros_msgs::BoundingBox& Bbox : Bound_msg.bounding_boxes)
     {
         sss.str("");
@@ -175,23 +173,12 @@ void PARSE::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
         string name_darknet = sss.str();
         Vector3d S_darknet_object;
 
-        std::vector<float> depth;
-        // cout << "name : " << Bbox.Class << endl;  
-        // for(int i =Bbox.xmin; i < Bbox.xmax; i=i+int((Bbox.xmax - Bbox.xmin)/5))
-        //     for(int j =Bbox.ymin; j < Bbox.ymax; j=j+int((Bbox.ymax - Bbox.ymin)/5))
-        //     {
-        //         depth.push_back(depth_pic.ptr<float>(j)[i]/1000);
-        //         if (depth_pic.ptr<float>(j)[i] == 0)
-        //             continue;
-        //     }
-        // double sum = std::accumulate(std::begin(depth), std::end(depth), 0.0);
-	    // double mean_depth =  sum / depth.size(); //均值
 
         Vector2d mean_point((Bbox.xmin+Bbox.xmax)/2,(Bbox.ymin+Bbox.ymax)/2);
         double mean_depth = depth_pic.ptr<float>(int(mean_point[1]))[int(mean_point[0])]/1000;
 
-        double x = (mean_point[0] - cx) * mean_depth / fx;
-        double y = (mean_point[1] - cy) * mean_depth / fy;
+        double x = (mean_point[0] - cy) * mean_depth / fy;
+        double y = (mean_point[1] - cx) * mean_depth / fx;
 
         Vector3d point(x,y,mean_depth);
 
@@ -215,20 +202,26 @@ void PARSE::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
                                                         dark_transform.stamp_,
                                                         "camera",
                                                         name_darknet));
+
+            Vector2d d_pose((Bbox.xmin+Bbox.xmax)/2,(Bbox.ymin+Bbox.ymax)/2);
+
+            if(object_2d_pose.count(Bbox.Class) == 0)
+                object_2d_pose.insert(std::map<string,Vector2d>::value_type(Bbox.Class,d_pose));
+
+
+            if(On_box.count(name_darknet)>0)
+            {
+                continue;
+            }
+                
+            
+            // cout << "name : " << name_darknet << endl;
+            // cout << "size of On_box : " << On_box.size() << endl;
+            On_box.insert(std::map<string,Vector3d>::value_type(Bbox.Class,S_darknet_object));
+
         }
 
-        for(auto iter = On_box.begin();iter != On_box.end(); iter++)
-        {
-            string iter_name = iter->first;
-            if(name_darknet == iter_name)
-            {
-                return;
-            }
-            
-        }
-        cout << "name : " << name_darknet << endl;
-        cout << "size of On_box : " << On_box.size() << endl;
-        On_box.insert(std::map<string,Vector3d>::value_type(name_darknet,S_darknet_object));
+       
   
     }
 
@@ -236,19 +229,16 @@ void PARSE::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
 
 }
 
-void PARSE::CameraInfo(const sensor_msgs::CameraInfo& camera)
+void PARSE::CameraInfo(const sensor_msgs::CameraInfo& camera_info)
 {
-    double K[9] ;
-    for( int t = 0;t<9;t++)
-    {
-        K[t] = camera.K[t]; 
-    }
-    
+    image_geometry::PinholeCameraModel camera_model;
+    camera_model.fromCameraInfo(camera_info);
+      // Get camera intrinsic properties for rectified image.
+    fx = camera_model.fx(); // focal length in camera x-direction [px]
+    fy = camera_model.fy(); // focal length in camera y-direction [px]
+    cx = camera_model.cx(); // optical center x-coordinate [px]
+    cy = camera_model.cy(); // optical center y-coordinate [px]
 
-    cx = K[0];
-    cy = K[4];
-    fx = K[2];
-    fy = K[5];
 }
 
 
@@ -256,9 +246,6 @@ void PARSE::depth_Callback(const sensor_msgs::ImageConstPtr& depth_msg)
 {
   try
   {
-    //cv::imshow("depth_view", cv_bridge::toCvShare(depth_msg, sensor_msgs::image_encodings::TYPE_16UC1)->image);
-    //depth_ptr = cv_bridge::toCvCopy(depth_msg, sensor_msgs::image_encodings::TYPE_16UC1); 
-    // cv::imshow("depth_view", cv_bridge::toCvShare(depth_msg, sensor_msgs::image_encodings::TYPE_32FC1)->image);
     depth_ptr = cv_bridge::toCvCopy(depth_msg, sensor_msgs::image_encodings::TYPE_32FC1); 
 
   }
@@ -271,6 +258,171 @@ void PARSE::depth_Callback(const sensor_msgs::ImageConstPtr& depth_msg)
 }
 
 
+void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
+{
+    cv_bridge::CvImagePtr cv_ptr;
+    try
+    {
+      cv_ptr = cv_bridge::toCvCopy(image_msg, sensor_msgs::image_encodings::BGR8);
+    }
+    catch (cv_bridge::Exception& e)
+    {
+      ROS_ERROR("cv_bridge exception: %s", e.what());
+      return;
+    }
+
+    cv::Mat image = cv_ptr->image;
+
+
+
+    // 画箭头
+    // on object
+    for(auto iter = Support_box.begin();iter != Support_box.end(); iter++)
+    {
+        string name_support_object_ = iter->first;
+        if(object_2d_ar_pose.count(name_support_object_)>0)
+        {
+            Vector9d Sbox_support_object_ = iter->second;
+
+            for(auto iter_ = On_box.begin();iter_ != On_box.end(); iter_++)
+            {
+                string name_on_object_ = iter_->first;
+                if(object_2d_ar_pose.count(name_on_object_)>0 || object_2d_pose.count(name_on_object_)>0)
+                {
+            
+                    Vector3d Sbox_on_object = iter_->second;
+                    if(Sbox_on_object[2] > Sbox_support_object_[8]     // Z > Z_
+                    && Sbox_on_object[0] > min(Sbox_support_object_[0],Sbox_support_object_[6])     //Xmax > Xmin
+                    && Sbox_on_object[0] < max(Sbox_support_object_[0],Sbox_support_object_[6])     //Xmax > Xmin
+                    && Sbox_on_object[1] > min(Sbox_support_object_[1],Sbox_support_object_[7])     //Ymax > Ymin
+                    && Sbox_on_object[1] < max(Sbox_support_object_[1],Sbox_support_object_[7]))    //Ymax > Ymin
+                    {
+                        if(object_2d_ar_pose.count(name_on_object_)>0)
+                            cv::arrowedLine(image, cv::Point(object_2d_ar_pose[name_support_object_][0], object_2d_ar_pose[name_support_object_][1]),
+                            cv::Point(object_2d_ar_pose[name_on_object_][0], object_2d_ar_pose[name_on_object_][1]), cv::Scalar(0, 255, 0), 2, 4,0,0.1);
+                        else if(object_2d_pose.count(name_on_object_)>0)
+                            cv::arrowedLine(image, cv::Point(object_2d_ar_pose[name_support_object_][0], object_2d_ar_pose[name_support_object_][1]),
+                            cv::Point(object_2d_pose[name_on_object_][0], object_2d_pose[name_on_object_][1]), cv::Scalar(0, 255, 0), 2, 4,0,0.1);
+                    }
+                
+                }
+                
+        
+            }
+        }
+        
+
+    }
+
+
+    // 画圈、写字
+    int add=15;
+    int r=0,g=255,b=255;
+
+    //yolo
+    for(auto iter = object_2d_pose.begin();iter != object_2d_pose.end(); iter++)
+    {
+        string pose_name = iter->first;
+        Vector2d pose_d = iter->second;
+
+        cv::circle(image,cv::Point(pose_d[0],pose_d[1]),10,cv::Scalar(0, 255, 0),4,8);
+        cv::putText(image, pose_name, cv::Point(pose_d[0]+15,pose_d[1]), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2, 8);
+
+        BOOST_FOREACH (boost::property_tree::ptree::value_type &vtt, knowledgegraph_object)
+        {
+            boost::property_tree::ptree vt = vtt.second;
+            string name_kg = vt.get<string>("name");
+            if(pose_name == name_kg )
+            {
+                add = 15;
+                BOOST_FOREACH (boost::property_tree::ptree::value_type &v, vt)
+                {
+                    if(v.second.get_value<std::string>() != name_kg)
+                    {
+                        cv::putText(image, v.first, cv::Point(pose_d[0]+10,pose_d[1]+add), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(r, g, b), 0.5, 8, 0);
+                        cv::putText(image, ":", cv::Point(pose_d[0]+70,pose_d[1]+add), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(r, g, b), 0.5, 8, 0);
+                        cv::putText(image, v.second.get_value<std::string>(), cv::Point(pose_d[0]+80,pose_d[1]+add), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(r, g, b), 0.5, 8, 0);
+                        
+                        add = add+15;
+                        if(add%45 == 0)
+                        {
+                            r=255*abs(r-255);
+                        }
+                        if((add+15)%45 == 0)
+                        {
+                            g=255*abs(g-255);
+                        }
+                        if((add+30)%45 == 0)
+                        {
+                            b=255*abs(b-255);
+                        }
+
+                    }
+                }
+                break;  
+            }
+        }
+
+        
+    }
+
+    // 二维码
+    for(auto iter = object_2d_ar_pose.begin();iter != object_2d_ar_pose.end(); iter++)
+    {
+        string pose_name = iter->first;
+        Vector2d pose_d = iter->second;
+
+        cv::circle(image,cv::Point(pose_d[0],pose_d[1]),10,cv::Scalar(0, 255, 0),4,8);
+        cv::putText(image, pose_name, cv::Point(pose_d[0]+15,pose_d[1]), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2, 8);
+
+        BOOST_FOREACH (boost::property_tree::ptree::value_type &vtt, knowledgegraph_object)
+        {
+            boost::property_tree::ptree vt = vtt.second;
+            string name_kg = vt.get<string>("name");
+            if(pose_name == name_kg )
+            {
+                add = 15;
+                r=0,g=255,b=255;
+                BOOST_FOREACH (boost::property_tree::ptree::value_type &v, vt)
+                {
+                    if(v.second.get_value<std::string>() != name_kg)
+                    {
+                        cv::putText(image, v.first, cv::Point(pose_d[0]+15,pose_d[1]+add), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(r, g, b), 0.5, 8, 0);
+                        cv::putText(image, ":", cv::Point(pose_d[0]+70,pose_d[1]+add), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(r, g, b), 0.5, 8, 0);
+                        cv::putText(image, v.second.get_value<std::string>(), cv::Point(pose_d[0]+80,pose_d[1]+add), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(r, g, b), 0.5, 8, 0);
+                        
+                        add = add+15;
+                        if(add%45 == 0)
+                        {
+                            r=255*abs(r-255);
+                        }
+                        if((add+15)%45 == 0)
+                        {
+                            g=255*abs(g-255);
+                        }
+                        if((add+30)%45 == 0)
+                        {
+                            b=255*abs(b-255);
+                        }
+
+                    }
+                }
+                break;
+            }
+        }
+
+        
+    }
+
+
+
+
+    sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", image).toImageMsg();
+    pub_pic.publish(msg);
+
+
+}
+
 
 void PARSE::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray& msg)
 {
@@ -280,17 +432,14 @@ void PARSE::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray& msg)
 
     std::stringstream ss;
 
+    object_2d_ar_pose.clear();
     for(const apriltag_ros::AprilTagDetection& ar_marker : msg.detections)
     {
         ss.str("");
         ss << "tag_"<< ar_marker.id[0];
 
-        // cout << ss.str() << endl;
-
-
         Eigen::Vector3d trans_object;
         Eigen::Quaterniond quat_object;
-  
 
         tf::StampedTransform transform;
         try
@@ -323,6 +472,32 @@ void PARSE::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray& msg)
         T_base_to_apri.rotate(quat_object.toRotationMatrix());
         T_base_to_apri.pretranslate(trans_object);
         // cout << "quat_object : " << T_base_to_apri.matrix() << endl;
+
+        string ar_pose_name;
+        switch(ar_marker.id[0])
+        {
+            case 0 :
+                ar_pose_name = "TV";
+                break;
+            case 1 :
+                ar_pose_name = "desk";
+                break;
+            case 2 :
+                ar_pose_name = "computer";
+                break;
+            case 3 :
+                ar_pose_name = "chair";
+                break;
+            case 4 :
+                ar_pose_name = "air_conditioner";
+                break;
+        }
+
+
+        // if(object_2d_ar_pose.count(ar_pose_name) == 0)
+        object_2d_ar_pose.insert(std::map<string,Vector2d>::value_type(ar_pose_name,Vector2d(ar_marker.tdposex[0],ar_marker.tdposey[0])));
+
+
 
         // TV
         if(ar_marker.id[0] == 0 && TV == false)
