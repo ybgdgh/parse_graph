@@ -1,0 +1,19 @@
+<launch>
+
+    <include file="$(find realsense2_camera)/launch/rs_camera.launch" />
+    <include file="$(find orb_slam2_ros)/ros/launch/orb_slam2_d435_rgbd.launch" />
+    <include file="$(find apriltag_ros)/launch/continuous_detection.launch" />
+    <!--<include file="$(find darknet_ros)/launch/darknet_ros.launch" />-->
+    
+
+    <node pkg="tf" type="static_transform_publisher" name="camera" 
+          args="0 0 0 -1.57 0 -1.57  camera_link camera 100" />
+
+    <node name="parse_graph" pkg="parse_graph" type="parse" output="screen"/>
+
+    <!--<include file="$(find pub_maker)/launch/shapes.launch" />-->
+
+    <!-- rviz view /-->
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find orb_slam2_ros)/ros/config/rviz_config.rviz"/>
+
+</launch>
