@@ -46,6 +46,8 @@
 #include <cv_bridge/cv_bridge.h>
 #include "image_geometry/pinhole_camera_model.h"
 
+#include "draw.h"
+
 using namespace std;
 using namespace Eigen;
 
@@ -102,6 +104,9 @@ class PARSE
     bool support_flag = false, on_flag = false;
     std::map<string,Vector9d> Support_box;
     std::map<string,Vector3d> On_box;
+    std::map<string,Vector3d> object_xyz;
+    std::map<string,Vector2d> object_pg_pose;
+    std::map<string,string> relationships;
 
     bool TV=false,desk=false,computer=false,chair=false,air_conditioner=false,floor_=false;
 
@@ -116,7 +121,7 @@ class PARSE
 
     ros::Subscriber sub_darknet,sub_CameraInfo,sub_depth_camera,sub_color_camera;
 
-    ros::Publisher pub_ar_pose,pub_pic;
+    ros::Publisher pub_pg_show,pub_pic;
     tf::TransformBroadcaster tf_pub_;
     
     ros::NodeHandle nh_;

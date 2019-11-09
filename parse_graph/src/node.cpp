@@ -18,7 +18,7 @@ PARSE::PARSE(ros::NodeHandle nh,ros::NodeHandle np)
     sub_color_camera = nh_.subscribe("/camera/color/image_raw", 30, &PARSE::color_Callback,this);
 
     pub_pic = nh_.advertise<sensor_msgs::Image>("kg_camera", 10);
-    // ros::Publisher marker_pub = nh_.advertise<visualization_msgs::Marker>("visualization_marker", 1);
+    pub_pg_show = nh_.advertise<sensor_msgs::Image>("pg_show", 10);
 
     knowledgegraph = PARSE::loadPoseFile("/home/ybg/knowledgegraph.json");
     knowledgegraph_object = knowledgegraph.get_child("object");
@@ -184,6 +184,10 @@ void PARSE::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
 
         S_darknet_object = T_base_to_camera * point;
 
+        S_darknet_object[0] = float((int)(S_darknet_object[0]*100+0.5f)/100.0);
+        S_darknet_object[1] = float((int)(S_darknet_object[1]*100+0.5f)/100.0);
+        S_darknet_object[2] = float((int)(S_darknet_object[2]*100+0.5f)/100.0);
+
         if(Bbox.Class == "cup" || Bbox.Class == "mouse")
         {
             
@@ -218,6 +222,8 @@ void PARSE::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
             // cout << "name : " << name_darknet << endl;
             // cout << "size of On_box : " << On_box.size() << endl;
             On_box.insert(std::map<string,Vector3d>::value_type(Bbox.Class,S_darknet_object));
+            object_xyz.insert(std::map<string,Vector3d>::value_type(Bbox.Class,S_darknet_object));
+            
 
         }
 
@@ -273,8 +279,6 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
 
     cv::Mat image = cv_ptr->image;
 
-
-
     // 画箭头
     // on object
     for(auto iter = Support_box.begin();iter != Support_box.end(); iter++)
@@ -303,6 +307,9 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
                         else if(object_2d_pose.count(name_on_object_)>0)
                             cv::arrowedLine(image, cv::Point(object_2d_ar_pose[name_support_object_][0], object_2d_ar_pose[name_support_object_][1]),
                             cv::Point(object_2d_pose[name_on_object_][0], object_2d_pose[name_on_object_][1]), cv::Scalar(0, 255, 0), 2, 4,0,0.1);
+
+                        // if(relationships.count(name_on_object_)>0 && relationships.count(name_support_object_)>0)
+                        //     relationships.insert(std::map<string,string>::value_type(name_support_object_,name_on_object_));
                     }
                 
                 }
@@ -314,7 +321,7 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
 
     }
 
-
+   
     // 画圈、写字
     int add=15;
     int r=0,g=255,b=255;
@@ -414,12 +421,96 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
         
     }
 
+    int rows = 600;
+    int cols = 200+(Support_box.size() + On_box.size())*200;
+    int x_ = cols/2;
+    int y_ = 50;
+    int count = 0;
+    object_pg_pose.clear();
+    if(cols > 0)
+    {
+        cv::Mat image_pg(rows, cols, CV_8UC3, Scalar(255,255,255));
+
+        string pg_name = knowledgegraph.get<string>("name");
+        
+        Draw_PG::draw_node(image_pg,cols/2,y_,"pg_name");
+
+        for(auto iter = object_xyz.begin();iter != object_xyz.end(); iter++)
+        {
+            string object_name = iter->first;
+            Vector3d object_xyz_ = iter->second;
+            x_ = x_ + count*180*pow(-1,count);
+            Draw_PG::draw_node(image_pg,x_,y_+150,object_name);
+            Draw_PG::draw_arrow(image_pg,cols/2,y_,x_,y_+150);
+
+            // 属性节点
+            cv::Rect rect(x_-10-30, y_+300, 20,20);//左上坐标（x,y）和矩形的长(x)宽(y)
+            cv::rectangle(image_pg, rect, cv::Scalar(0, 160, 255),-1, cv::LINE_8,0);//绘制填充矩形
+            Draw_PG::draw_attribute_arrow(image_pg,x_,y_+150+15,x_-30, y_+300);
+
+            // 地址节点
+            Draw_PG::draw_triangle(image_pg, x_+30, y_+300);
+            Draw_PG::draw_attribute_arrow(image_pg,x_,y_+150+15,x_+30, y_+300);
+            object_pg_pose.insert(std::map<string,Vector2d>::value_type(object_name,Vector2d(x_+30,y_+300+20)));
+            
+
+            // xyz
+            cv::Rect rect1(x_-40-30, y_+420, 80,20);//左上坐标（x,y）和矩形的长(x)宽(y)
+            cv::rectangle(image_pg, rect1, cv::Scalar(0, 255, 0), 1, cv::LINE_8,0);//绘制矩形
+            Draw_PG::draw_attribute_arrow(image_pg,x_-30, y_+320,x_-30, y_+420);
+
+            // BOOST_FOREACH (boost::property_tree::ptree::value_type &vtt, knowledgegraph_object)
+            // {
+            //     boost::property_tree::ptree vt = vtt.second;
+            //     string name_kg = vt.get<string>("name");
+            //     if(object_name == name_kg)
+            //     {
+            //         // Draw_PG::draw_attribute_node(image_pg, int x, int y, std::string node_name)
+            //     }
+     
+            // }
+
+            count++;
+            
+        }
 
 
+        // for(auto iter = On_box.begin();iter != On_box.end(); iter++)
+        // {
+        //     boost::property_tree::ptree vt = vtt.second;
+        //     std::string name_kg = vt.get<std::string>("name");
 
+        //     // attribute
+        //     BOOST_FOREACH (boost::property_tree::ptree::value_type &v, vt)
+        //     {
+        //         if(v.first == "on")
+        //         {
+        //             std::string name_on = vt.get<std::string>("on");
+        //             Vector2d start = object_pg_pose[name_kg];
+        //             Vector2d end = object_pg_pose[name_on];
+        //             Vector2d meddle = Vector2d((start[0]+end[0])/2,y_+300);
+        //             Draw_PG::draw_Arc(image_pg,cv::Point(start[0],start[1]),cv::Point(meddle[0],meddle[1]),cv::Point(end[0],end[1]),2);
+        //         }
+        //     }
+            
+    
+        // }
+
+        
+        
+        
+
+        // 发布pg图
+        sensor_msgs::ImagePtr pg_msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", image_pg).toImageMsg();
+        pub_pg_show.publish(pg_msg);
+
+    }
+
+    // 发布带节点关系的图像
     sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", image).toImageMsg();
     pub_pic.publish(msg);
 
+ 
 
 }
 
@@ -615,13 +706,27 @@ void PARSE::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray& msg)
 
         if(support_flag = true)
         {
+
             support_flag = false;
             Support_box.insert(std::map<string,Vector9d>::value_type(name,S_support_object));
+
+            S_support_object[0] = double((int)(S_support_object[0]*100+0.5f)/100.0);
+            S_support_object[1] = double((int)(S_support_object[1]*100+0.5f)/100.0);
+            S_support_object[8] = double((int)(S_support_object[8]*100+0.5f)/100.0);
+
+            object_xyz.insert(std::map<string,Vector3d>::value_type(name,Vector3d(S_support_object[0],S_support_object[1],S_support_object[8])));
         }
         else if(on_flag = true)
         {
             on_flag = false;
+
             On_box.insert(std::map<string,Vector3d>::value_type(name,S_on_object));
+            S_on_object[0] = double((int)(S_on_object[0]*100+0.5f)/100.0);
+            S_on_object[1] = double((int)(S_on_object[1]*100+0.5f)/100.0);
+            S_on_object[2] = double((int)(S_on_object[2]*100+0.5f)/100.0);
+
+            object_xyz.insert(std::map<string,Vector3d>::value_type(name,S_on_object));
+            
         }
  
         
