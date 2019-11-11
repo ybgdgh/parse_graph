@@ -128,6 +128,10 @@ PARSE::~PARSE()
         dataFile << sw.write(root);
         dataFile.close();
 
+        cv::imwrite("/home/ybg/pg_graph.png",pg_graph);
+        cv::imwrite("/home/ybg/pg_image_show.png",pg_image_show);
+        
+
     }
 }
 
@@ -308,8 +312,8 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
                             cv::arrowedLine(image, cv::Point(object_2d_ar_pose[name_support_object_][0], object_2d_ar_pose[name_support_object_][1]),
                             cv::Point(object_2d_pose[name_on_object_][0], object_2d_pose[name_on_object_][1]), cv::Scalar(0, 255, 0), 2, 4,0,0.1);
 
-                        // if(relationships.count(name_on_object_)>0 && relationships.count(name_support_object_)>0)
-                        //     relationships.insert(std::map<string,string>::value_type(name_support_object_,name_on_object_));
+                        if(relationships.count(name_on_object_) == 0)
+                            relationships.insert(std::map<string,string>::value_type(name_on_object_,name_support_object_));
                     }
                 
                 }
@@ -421,11 +425,15 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
         
     }
 
+    pg_image_show = image;
+
+
     int rows = 600;
     int cols = 200+(Support_box.size() + On_box.size())*200;
     int x_ = cols/2;
     int y_ = 50;
     int count = 0;
+    std::stringstream ss;
     object_pg_pose.clear();
     if(cols > 0)
     {
@@ -455,9 +463,14 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
             
 
             // xyz
-            cv::Rect rect1(x_-40-30, y_+420, 80,20);//左上坐标（x,y）和矩形的长(x)宽(y)
+            cv::Rect rect1(x_-60-30, y_+420, 120,20);//左上坐标（x,y）和矩形的长(x)宽(y)
             cv::rectangle(image_pg, rect1, cv::Scalar(0, 255, 0), 1, cv::LINE_8,0);//绘制矩形
             Draw_PG::draw_attribute_arrow(image_pg,x_-30, y_+320,x_-30, y_+420);
+
+            ss.str("");
+            ss << object_xyz_[0] << "," << object_xyz_[1] << "," << object_xyz_[2];
+            cv::putText(image_pg, ss.str(), cv::Point(x_-60-27,y_+435), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 0), 1, 8);
+
 
             // BOOST_FOREACH (boost::property_tree::ptree::value_type &vtt, knowledgegraph_object)
             // {
@@ -475,32 +488,25 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
         }
 
 
-        // for(auto iter = On_box.begin();iter != On_box.end(); iter++)
-        // {
-        //     boost::property_tree::ptree vt = vtt.second;
-        //     std::string name_kg = vt.get<std::string>("name");
-
-        //     // attribute
-        //     BOOST_FOREACH (boost::property_tree::ptree::value_type &v, vt)
-        //     {
-        //         if(v.first == "on")
-        //         {
-        //             std::string name_on = vt.get<std::string>("on");
-        //             Vector2d start = object_pg_pose[name_kg];
-        //             Vector2d end = object_pg_pose[name_on];
-        //             Vector2d meddle = Vector2d((start[0]+end[0])/2,y_+300);
-        //             Draw_PG::draw_Arc(image_pg,cv::Point(start[0],start[1]),cv::Point(meddle[0],meddle[1]),cv::Point(end[0],end[1]),2);
-        //         }
-        //     }
+        for(auto iter = relationships.begin();iter != relationships.end(); iter++)
+        {
             
-    
-        // }
+            std::string name_on = iter->first;
+            std::string name_support = iter->second;
+           
+            Vector2d start = object_pg_pose[name_on];
+            Vector2d end = object_pg_pose[name_support];
+            Vector2d meddle = Vector2d((start[0]+end[0])/2,start[1]+50);
+            Draw_PG::draw_Arc(image_pg,cv::Point(start[0],start[1]),cv::Point(meddle[0],meddle[1]),cv::Point(end[0],end[1]),2);
+
+        }
 
         
         
         
 
         // 发布pg图
+        pg_graph = image_pg;
         sensor_msgs::ImagePtr pg_msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", image_pg).toImageMsg();
         pub_pg_show.publish(pg_msg);
 

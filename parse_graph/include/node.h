@@ -98,6 +98,7 @@ class PARSE
     Eigen::Isometry3d T_base_to_apri = Eigen::Isometry3d::Identity();
 
     double cx,cy,fx,fy;
+    cv::Mat pg_graph,pg_image_show;
     std::map<string,Vector2d> object_2d_pose;
     std::map<string,Vector2d> object_2d_ar_pose;
 
