@@ -130,7 +130,7 @@ PARSE::~PARSE()
 
         cv::imwrite("/home/ybg/pg_graph.png",pg_graph);
         cv::imwrite("/home/ybg/pg_image_show.png",pg_image_show);
-        
+
 
     }
 }
@@ -634,7 +634,7 @@ void PARSE::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray& msg)
 
             support_flag = true;
             // cout << "T_base_to_apri :" << T_base_to_apri.matrix() << endl;
-            cout << "desk : " << S_support_object << endl;
+            // cout << "desk : " << S_support_object << endl;
         }
         // computer support_function
         else if(ar_marker.id[0] == 2 && computer == false)
@@ -704,13 +704,50 @@ void PARSE::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray& msg)
             on_flag = true;
             
         }
+        else if(ar_marker.id[0] == 5 && desk1 == false)
+        {
+            desk1 = true;
+            name = "desk1";
+
+            Eigen::Vector3d t2(0,0,0.5);
+            Eigen::Vector3d trans = T_base_to_apri * t2;    
+
+            S_on_object << trans(0),trans(1),trans_object[2];
+            // cout << "S_on_object" << S_on_object << endl;
+            // cout << "trans" << trans << endl;
+            on_flag = true;
+        }
+        else if(ar_marker.id[0] == 6 && desk2 == false)
+        {
+            desk2 = true;
+            name = "desk2";
+
+            Eigen::Vector3d t2(0,0,0.5);
+            Eigen::Vector3d trans = T_base_to_apri * t2;    
+
+            S_on_object << trans(0),trans(1),trans_object[2];
+
+            on_flag = true;
+        }
+        else if(ar_marker.id[0] == 7 && desk3 == false)
+        {
+            desk1 = true;
+            name = "desk3";
+
+            Eigen::Vector3d t2(0,0,0.5);
+            Eigen::Vector3d trans = T_base_to_apri * t2;    
+
+            S_on_object << trans(0),trans(1),trans_object[2];
+
+            on_flag = true;
+        }
         
         else 
         {
             break;
         }
 
-        if(support_flag = true)
+        if(support_flag == true)
         {
 
             support_flag = false;
@@ -722,7 +759,7 @@ void PARSE::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray& msg)
 
             object_xyz.insert(std::map<string,Vector3d>::value_type(name,Vector3d(S_support_object[0],S_support_object[1],S_support_object[8])));
         }
-        else if(on_flag = true)
+        else if(on_flag == true)
         {
             on_flag = false;
 

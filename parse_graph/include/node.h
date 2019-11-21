@@ -109,7 +109,7 @@ class PARSE
     std::map<string,Vector2d> object_pg_pose;
     std::map<string,string> relationships;
 
-    bool TV=false,desk=false,computer=false,chair=false,air_conditioner=false,floor_=false;
+    bool TV=false,desk=false,computer=false,chair=false,air_conditioner=false,floor_=false,desk1=false,desk2=false,desk3=false;
 
     boost::property_tree::ptree knowledgegraph ;
     boost::property_tree::ptree knowledgegraph_object ;
