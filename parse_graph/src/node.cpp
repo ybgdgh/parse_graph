@@ -19,8 +19,23 @@ PARSE::PARSE(ros::NodeHandle nh,ros::NodeHandle np)
 
     pub_pic = nh_.advertise<sensor_msgs::Image>("kg_camera", 10);
     pub_pg_show = nh_.advertise<sensor_msgs::Image>("pg_show", 10);
+    marker_pub = nh_.advertise<visualization_msgs::Marker>("visualization_marker", 10);
 
-    knowledgegraph = PARSE::loadPoseFile("/home/ybg/knowledgegraph.json");
+
+    // read AOG scene
+    vg_AOG = PARSE::loadPoseFile("/home/dm/AOG_all.json");
+    kitchen = vg_AOG.get_child("kitchen");
+    conference = vg_AOG.get_child("conference");
+    bathroom = vg_AOG.get_child("bathroom");
+    office = vg_AOG.get_child("office");
+    dining = vg_AOG.get_child("dining");
+    living = vg_AOG.get_child("living");
+    bedroom = vg_AOG.get_child("bedroom");
+
+    office_object = office.get_child("objects");
+    
+
+    knowledgegraph = PARSE::loadPoseFile("/home/dm/knowledgegraph.json");
     knowledgegraph_object = knowledgegraph.get_child("object");
 
     std::cout << "init finish" << std::endl;
@@ -124,12 +139,12 @@ PARSE::~PARSE()
 
         // 输出到文件
         ofstream dataFile;//记录数据
-        dataFile.open("/home/ybg/kg.json",ios::out);
+        dataFile.open("/home/dm/kg.json",ios::out);
         dataFile << sw.write(root);
         dataFile.close();
 
-        cv::imwrite("/home/ybg/pg_graph.png",pg_graph);
-        cv::imwrite("/home/ybg/pg_image_show.png",pg_image_show);
+        cv::imwrite("/home/dm/pg_graph.png",pg_graph);
+        cv::imwrite("/home/dm/pg_image_show.png",pg_image_show);
 
 
     }
@@ -167,6 +182,84 @@ void PARSE::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
     T_base_to_camera.rotate ( quat_Bbox );
     T_base_to_camera.pretranslate ( trans_Bbox );
 
+    // 统计同一物体出现多个概率的情况
+    int count_object=0;
+    bool happen_flag=false;
+    id_object_p.clear();
+    std::map<string,float> object_p;
+    object_Bbox.clear();
+    for(const darknet_ros_msgs::BoundingBox& Bbox : Bound_msg.bounding_boxes)
+    {
+        happen_flag=false;
+        object_p.clear();
+        if(!object_Bbox.empty())
+        {
+            for(int i=0;i<object_Bbox.size();i++)
+            {
+                if(Bbox.xmin == object_Bbox[i](0) && Bbox.xmax == object_Bbox[i](1) && Bbox.ymin == object_Bbox[i](2) && Bbox.ymax == object_Bbox[i](3))
+                {
+                    id_object_p[i].insert(std::map<string,float>::value_type(Bbox.Class,Bbox.probability));
+                    cout << "happend!" << endl;
+                    happen_flag=true;
+                    break;
+                }
+               
+            }
+            
+        }
+        if(happen_flag==true) 
+            continue;
+        
+        // 保存Bbox
+        object_Bbox.push_back(Vector4d(Bbox.xmin,Bbox.xmax,Bbox.ymin,Bbox.ymax));
+        // 保存类别对应的p
+        object_p.insert(std::map<string,float>::value_type(Bbox.Class,Bbox.probability));
+        // 保存该类别到object
+        id_object_p.push_back(object_p);
+    }
+
+    // std::cout << "!!!!!!!!!!!!!!" << id_object_p.size() << endl;
+    id_object_p_only.clear();
+    for(int i=0;i<id_object_p.size();i++)
+    {
+        string map_name;
+        float MAP=0;
+        if(id_object_p[i].size()>1)
+        {
+            for(auto iter_ = id_object_p[i].begin();iter_ != id_object_p[i].end(); iter_++)
+            {
+                // cout << iter_->first << " : " << iter_->second;
+                BOOST_FOREACH (boost::property_tree::ptree::value_type &v, office_object)
+                {
+                    if(iter_->first == v.first)
+                    {
+                        float office_object_p = office_object.get<float>(iter_->first);
+                        
+                        if(MAP < iter_->second*office_object_p)
+                        {
+                            MAP = iter_->second*office_object_p;
+                            map_name = iter_->first;                        
+                        }
+                        cout << iter_->first << " : " << iter_->second << " * " << office_object_p << " = " << iter_->second*office_object_p << endl;                      
+                        break;
+                    }
+                }   
+            }
+        }
+        else
+        {
+            map_name = id_object_p[i].begin()->first;
+        }
+
+        id_object_p_only.push_back(map_name);
+        // cout << i ;
+
+        // cout << map_name << " : " << MAP;
+        
+        // cout << endl;
+    }
+
+
     std::stringstream sss;
     object_2d_pose.clear();
     for(const darknet_ros_msgs::BoundingBox& Bbox : Bound_msg.bounding_boxes)
@@ -177,20 +270,25 @@ void PARSE::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
         string name_darknet = sss.str();
         Vector3d S_darknet_object;
 
-
-        Vector2d mean_point((Bbox.xmin+Bbox.xmax)/2,(Bbox.ymin+Bbox.ymax)/2);
-        double mean_depth = depth_pic.ptr<float>(int(mean_point[1]))[int(mean_point[0])]/1000;
-
+        Vector2d mean_point((Bbox.xmin+Bbox.xmax)/2,(Bbox.ymin+Bbox.ymax)/2);        
+        double mean_depth = depth_pic.ptr<float>(int(mean_point[1]))[int(mean_point[0])]/1000.0;
+        
         double x = (mean_point[0] - cy) * mean_depth / fy;
         double y = (mean_point[1] - cx) * mean_depth / fx;
+
+        double x1 = (Bbox.ymin - cy) * mean_depth / fy;
+        double y1 = (Bbox.xmin - cx) * mean_depth / fx;
+
+        double x2 = (Bbox.ymax - cy) * mean_depth / fy;
+        double y2 = (Bbox.xmax - cx) * mean_depth / fx;
 
         Vector3d point(x,y,mean_depth);
 
         S_darknet_object = T_base_to_camera * point;
 
-        S_darknet_object[0] = float((int)(S_darknet_object[0]*100+0.5f)/100.0);
-        S_darknet_object[1] = float((int)(S_darknet_object[1]*100+0.5f)/100.0);
-        S_darknet_object[2] = float((int)(S_darknet_object[2]*100+0.5f)/100.0);
+        S_darknet_object[0] = float(round(S_darknet_object[0]*1000+0.5f)/1000.0);
+        S_darknet_object[1] = float(round(S_darknet_object[1]*1000+0.5f)/1000.0);
+        S_darknet_object[2] = float(round(S_darknet_object[2]*1000+0.5f)/1000.0);
 
         if(Bbox.Class == "cup" || Bbox.Class == "mouse")
         {
@@ -221,22 +319,22 @@ void PARSE::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
             {
                 continue;
             }
-                
+
+            // the scale of boundingbox    
+            Vector3d marker_scale;
+            marker_scale << abs(x2-x1),max(abs(x2-x1),abs(y2-y1)),abs(y2-y1);
             
             // cout << "name : " << name_darknet << endl;
             // cout << "size of On_box : " << On_box.size() << endl;
             On_box.insert(std::map<string,Vector3d>::value_type(Bbox.Class,S_darknet_object));
             object_xyz.insert(std::map<string,Vector3d>::value_type(Bbox.Class,S_darknet_object));
-            
+            object_V.insert(std::map<string,Vector3d>::value_type(Bbox.Class,marker_scale));
 
         }
 
        
   
     }
-
-
-
 }
 
 void PARSE::CameraInfo(const sensor_msgs::CameraInfo& camera_info)
@@ -295,16 +393,20 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
             for(auto iter_ = On_box.begin();iter_ != On_box.end(); iter_++)
             {
                 string name_on_object_ = iter_->first;
+                cout << name_on_object_ << endl;
                 if(object_2d_ar_pose.count(name_on_object_)>0 || object_2d_pose.count(name_on_object_)>0)
                 {
             
                     Vector3d Sbox_on_object = iter_->second;
+
+                    // support                     
                     if(Sbox_on_object[2] > Sbox_support_object_[8]     // Z > Z_
                     && Sbox_on_object[0] > min(Sbox_support_object_[0],Sbox_support_object_[6])     //Xmax > Xmin
                     && Sbox_on_object[0] < max(Sbox_support_object_[0],Sbox_support_object_[6])     //Xmax > Xmin
                     && Sbox_on_object[1] > min(Sbox_support_object_[1],Sbox_support_object_[7])     //Ymax > Ymin
                     && Sbox_on_object[1] < max(Sbox_support_object_[1],Sbox_support_object_[7]))    //Ymax > Ymin
                     {
+                        // 连接两端的箭头线，有的可能存在ar里有的不是，因为实时清空所以实时显示更新
                         if(object_2d_ar_pose.count(name_on_object_)>0)
                             cv::arrowedLine(image, cv::Point(object_2d_ar_pose[name_support_object_][0], object_2d_ar_pose[name_support_object_][1]),
                             cv::Point(object_2d_ar_pose[name_on_object_][0], object_2d_ar_pose[name_on_object_][1]), cv::Scalar(0, 255, 0), 2, 4,0,0.1);
@@ -312,18 +414,80 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
                             cv::arrowedLine(image, cv::Point(object_2d_ar_pose[name_support_object_][0], object_2d_ar_pose[name_support_object_][1]),
                             cv::Point(object_2d_pose[name_on_object_][0], object_2d_pose[name_on_object_][1]), cv::Scalar(0, 255, 0), 2, 4,0,0.1);
 
-                        if(relationships.count(name_on_object_) == 0)
-                            relationships.insert(std::map<string,string>::value_type(name_on_object_,name_support_object_));
-                    }
+                        if(support_relationships.count(name_on_object_) == 0)
+                            support_relationships.insert(std::map<string,string>::value_type(name_on_object_,name_support_object_));
+                        
+
+                        // 在on的面积上均匀100个点进行采样，判断多少位于support的面积之内
+                        int support_sample_count=0;
+                        int kkk=0;
+                        for(float i=Sbox_on_object[0]-object_V[name_on_object_][0]/2.0;i<Sbox_on_object[0]+object_V[name_on_object_][0]/2.0;i=i+(object_V[name_on_object_][0]/10.0))
+                            for(float j=Sbox_on_object[1]-object_V[name_on_object_][1]/2.0;j<Sbox_on_object[1]+object_V[name_on_object_][1]/2.0;j=j+(object_V[name_on_object_][1]/10.0))
+                            {
+                                kkk++;
+                                if(i > min(Sbox_support_object_[0],Sbox_support_object_[6])     //Xmax > Xmin
+                                && i < max(Sbox_support_object_[0],Sbox_support_object_[6])     //Xmax > Xmin
+                                && j > min(Sbox_support_object_[1],Sbox_support_object_[7])     //Ymax > Ymin
+                                && j < max(Sbox_support_object_[1],Sbox_support_object_[7]))    //Ymax > Ymin
+                                {
+                                    support_sample_count++;
+                                }
+                            }
+                            cout << "kkk : " << kkk << endl;
+                        cout << "support_sample_count : " << support_sample_count << endl;
+                        if(intersection_S.count(name_on_object_) == 0)
+                            intersection_S.insert(map<string, float>::value_type(name_on_object_, float(support_sample_count/100.0)));
+                   
+                    }                
                 
+
+                    // contain
+                    // 在on的体积上均匀1000个点进行采样，判断多少位于support的体积之内                    
+                    int contain_sample_count=0;
+                    int jjj =0;
+                    for(float i=Sbox_on_object[0]-object_V[name_on_object_][0]/2.0;i<Sbox_on_object[0]+object_V[name_on_object_][0]/2.0;i=i+(object_V[name_on_object_][0]/10.0))
+                        for(float j=Sbox_on_object[1]-object_V[name_on_object_][1]/2.0;j<Sbox_on_object[1]+object_V[name_on_object_][1]/2.0;j=j+(object_V[name_on_object_][1]/10.0))
+                            for(float k = Sbox_on_object[2]-object_V[name_on_object_][2]/2 ; k < Sbox_on_object[2]+object_V[name_on_object_][2]/2 ; k = k+object_V[name_on_object_][2]/10.0)                    
+                            {
+                                jjj++;
+                                if(i > min(Sbox_support_object_[0],Sbox_support_object_[6])     //Xmax > Xmin
+                                && i < max(Sbox_support_object_[0],Sbox_support_object_[6])     //Xmax > Xmin
+                                && j > min(Sbox_support_object_[1],Sbox_support_object_[7])     //Ymax > Ymin
+                                && j < max(Sbox_support_object_[1],Sbox_support_object_[7])     //Ymax > Ymin
+                                && k > Sbox_support_object_[8]-object_V[name_on_object_][2]   //z > Zmin
+                                && k < Sbox_support_object_[8])  //z < Zmax
+                                {
+                                    contain_sample_count++;
+                                }
+                            }
+                    cout << "jjj : " << jjj << endl;                    
+                    cout << "contain_sample_count : " << contain_sample_count << endl;
+                    if(contain_sample_count>500)
+                    {
+                        // 连接两端的箭头线，有的可能存在ar里有的不是，因为实时清空所以实时显示更新
+                        if(object_2d_ar_pose.count(name_on_object_)>0)
+                            cv::arrowedLine(image, cv::Point(object_2d_ar_pose[name_support_object_][0], object_2d_ar_pose[name_support_object_][1]),
+                            cv::Point(object_2d_ar_pose[name_on_object_][0], object_2d_ar_pose[name_on_object_][1]), cv::Scalar(0, 0, 255), 2, 4,0,0.1);
+                        else if(object_2d_pose.count(name_on_object_)>0)
+                            cv::arrowedLine(image, cv::Point(object_2d_ar_pose[name_support_object_][0], object_2d_ar_pose[name_support_object_][1]),
+                            cv::Point(object_2d_pose[name_on_object_][0], object_2d_pose[name_on_object_][1]), cv::Scalar(0, 0, 255), 2, 4,0,0.1);
+
+                        if(contian_relationships.count(name_on_object_) == 0)
+                            contian_relationships.insert(std::map<string,string>::value_type(name_on_object_,name_support_object_));
+                        
+                        if(intersection_V.count(name_on_object_) == 0)
+                            intersection_V.insert(map<string, float>::value_type(name_on_object_, float(contain_sample_count/1000.0)));
+
+                    }
+                   
                 }
                 
         
             }
         }
-        
-
     }
+
+
 
    
     // 画圈、写字
@@ -488,7 +652,8 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
         }
 
 
-        for(auto iter = relationships.begin();iter != relationships.end(); iter++)
+        // 连接节点间的关系
+        for(auto iter = support_relationships.begin();iter != support_relationships.end(); iter++)
         {
             
             std::string name_on = iter->first;
@@ -496,6 +661,18 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
            
             Vector2d start = object_pg_pose[name_on];
             Vector2d end = object_pg_pose[name_support];
+            Vector2d meddle = Vector2d((start[0]+end[0])/2,start[1]+50);
+            Draw_PG::draw_Arc(image_pg,cv::Point(start[0],start[1]),cv::Point(meddle[0],meddle[1]),cv::Point(end[0],end[1]),2);
+
+        }
+        for(auto iter = contian_relationships.begin();iter != contian_relationships.end(); iter++)
+        {
+            
+            std::string name_in = iter->first;
+            std::string name_out = iter->second;
+           
+            Vector2d start = object_pg_pose[name_in];
+            Vector2d end = object_pg_pose[name_out];
             Vector2d meddle = Vector2d((start[0]+end[0])/2,start[1]+50);
             Draw_PG::draw_Arc(image_pg,cv::Point(start[0],start[1]),cv::Point(meddle[0],meddle[1]),cv::Point(end[0],end[1]),2);
 
@@ -516,7 +693,77 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
     sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", image).toImageMsg();
     pub_pic.publish(msg);
 
- 
+    // visualization_msgs::MarkerArray markerarray;
+
+    // 发布object的scale
+    std::stringstream sss;
+    int count_marker=0;
+    // cout << object_V.size() << endl;
+    for(auto iter = object_V.begin();iter != object_V.end(); iter++)
+    {
+        Vector3d marker_scale_ = iter->second;
+        Vector3d marker_pose = object_xyz[iter->first];
+        // cout << "marker_pose: " << marker_pose << endl;
+        sss.str("");
+        sss << "/" << iter->first;
+        visualization_msgs::Marker marker;
+        // Set the frame ID and timestamp.  See the TF tutorials for information on these.
+        marker.header.frame_id = "map";
+        marker.header.stamp = ros::Time::now();
+
+        sss.str("");
+        sss << "basic_shapes" << count_marker;
+        // Set the namespace and id for this marker.  This serves to create a unique ID
+        // Any marker sent with the same namespace and id will overwrite the old one
+        marker.ns = sss.str();
+        marker.id = count_marker;
+
+        // Set the marker type.  Initially this is CUBE, and cycles between that and SPHERE, ARROW, and CYLINDER
+        marker.type = shape;
+
+        // Set the marker action.  Options are ADD, DELETE, and new in ROS Indigo: 3 (DELETEALL)
+        marker.action = visualization_msgs::Marker::ADD;
+
+        // Set the pose of the marker.  This is a full 6DOF pose relative to the frame/time specified in the header
+
+        if(iter->first == "cup" || iter->first == "mouse")
+        {
+            marker.pose.position.x = marker_pose[0];
+            marker.pose.position.y = marker_pose[1];
+            marker.pose.position.z = marker_pose[2];
+        }
+        else
+        {
+            marker.pose.position.x = marker_pose[0];
+            marker.pose.position.y = marker_pose[1];
+            marker.pose.position.z = marker_pose[2]-marker_scale_[2]/2;
+
+        }
+        
+        marker.pose.orientation.x = 0.0;
+        marker.pose.orientation.y = 0.0;
+        marker.pose.orientation.z = 0.0;
+        marker.pose.orientation.w = 1.0;
+
+        // Set the scale of the marker -- 1x1x1 here means 1m on a side
+        marker.scale.x = marker_scale_[0];
+        marker.scale.y = marker_scale_[0];
+        marker.scale.z = marker_scale_[2];
+
+        // Set the color -- be sure to set alpha to something non-zero!
+        marker.color.r = 0.5f;//1.0f;
+        marker.color.g = 0.5f;//1.0f;
+        marker.color.b = 0.5f;//1.0f;
+        marker.color.a = 0.5f;//1.0;
+
+        marker.lifetime = ros::Duration();
+
+        // markerarray.markers.push_back(marker);
+        marker_pub.publish(marker);
+        count_marker++;
+    }
+    
+    // marker_pub.publish(markerarray);
 
 }
 
@@ -594,7 +841,7 @@ void PARSE::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray& msg)
         // if(object_2d_ar_pose.count(ar_pose_name) == 0)
         object_2d_ar_pose.insert(std::map<string,Vector2d>::value_type(ar_pose_name,Vector2d(ar_marker.tdposex[0],ar_marker.tdposey[0])));
 
-
+        Vector3d marker_scale;
 
         // TV
         if(ar_marker.id[0] == 0 && TV == false)
@@ -605,6 +852,8 @@ void PARSE::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray& msg)
             Eigen::Vector3d trans(trans_object[0],trans_object[1],trans_object[2]);    
 
             S_on_object << trans(0),trans(1),trans_object[2];     
+            
+            marker_scale << 0.5,0.3,0.1;
 
             on_flag = true;
         }
@@ -632,6 +881,8 @@ void PARSE::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray& msg)
                         trans4(0),trans4(1),
                         trans_object[2];
 
+            marker_scale << 1,2,1;
+            
             support_flag = true;
             // cout << "T_base_to_apri :" << T_base_to_apri.matrix() << endl;
             // cout << "desk : " << S_support_object << endl;
@@ -660,6 +911,8 @@ void PARSE::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray& msg)
                         trans4(0),trans4(1),
                         trans_object[2];
 
+            marker_scale << 0.1,0.3,0.3;
+            
             support_flag = true;
             
         }
@@ -687,6 +940,8 @@ void PARSE::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray& msg)
                         trans4(0),trans4(1),
                         trans_object[2];
 
+            marker_scale << 0.2,0.2,-0.5;
+            
             support_flag = true;            
 
             // cout << "chair : " << S_object << endl; 
@@ -701,6 +956,8 @@ void PARSE::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray& msg)
 
             S_on_object << trans(0),trans(1),trans_object[2];
 
+            marker_scale << 0.1,1,0.1;
+            
             on_flag = true;
             
         }
@@ -715,6 +972,8 @@ void PARSE::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray& msg)
             S_on_object << trans(0),trans(1),trans_object[2];
             // cout << "S_on_object" << S_on_object << endl;
             // cout << "trans" << trans << endl;
+            marker_scale << 0.1,0.3,0.3;
+            
             on_flag = true;
         }
         else if(ar_marker.id[0] == 6 && desk2 == false)
@@ -726,6 +985,7 @@ void PARSE::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray& msg)
             Eigen::Vector3d trans = T_base_to_apri * t2;    
 
             S_on_object << trans(0),trans(1),trans_object[2];
+            marker_scale << 0.1,0.3,0.3;
 
             on_flag = true;
         }
@@ -738,6 +998,7 @@ void PARSE::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray& msg)
             Eigen::Vector3d trans = T_base_to_apri * t2;    
 
             S_on_object << trans(0),trans(1),trans_object[2];
+            marker_scale << 0.1,0.3,0.3;
 
             on_flag = true;
         }
@@ -753,22 +1014,25 @@ void PARSE::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray& msg)
             support_flag = false;
             Support_box.insert(std::map<string,Vector9d>::value_type(name,S_support_object));
 
-            S_support_object[0] = double((int)(S_support_object[0]*100+0.5f)/100.0);
-            S_support_object[1] = double((int)(S_support_object[1]*100+0.5f)/100.0);
-            S_support_object[8] = double((int)(S_support_object[8]*100+0.5f)/100.0);
+            S_support_object[0] = double((int)(S_support_object[0]*1000+0.5f)/1000.0);
+            S_support_object[1] = double((int)(S_support_object[1]*1000+0.5f)/1000.0);
+            S_support_object[8] = double((int)(S_support_object[8]*1000+0.5f)/1000.0);
 
             object_xyz.insert(std::map<string,Vector3d>::value_type(name,Vector3d(S_support_object[0],S_support_object[1],S_support_object[8])));
+            object_V.insert(std::map<string,Vector3d>::value_type(name,marker_scale));
+            
         }
         else if(on_flag == true)
         {
             on_flag = false;
 
             On_box.insert(std::map<string,Vector3d>::value_type(name,S_on_object));
-            S_on_object[0] = double((int)(S_on_object[0]*100+0.5f)/100.0);
-            S_on_object[1] = double((int)(S_on_object[1]*100+0.5f)/100.0);
-            S_on_object[2] = double((int)(S_on_object[2]*100+0.5f)/100.0);
+            S_on_object[0] = double((int)(S_on_object[0]*1000+0.5f)/1000.0);
+            S_on_object[1] = double((int)(S_on_object[1]*1000+0.5f)/1000.0);
+            S_on_object[2] = double((int)(S_on_object[2]*1000+0.5f)/1000.0);
 
             object_xyz.insert(std::map<string,Vector3d>::value_type(name,S_on_object));
+            object_V.insert(std::map<string,Vector3d>::value_type(name,marker_scale));
             
         }
  

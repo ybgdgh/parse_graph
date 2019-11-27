@@ -35,6 +35,8 @@
 #include <sensor_msgs/image_encodings.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/Image.h>
+#include <visualization_msgs/MarkerArray.h>
+#include <visualization_msgs/Marker.h>
 
 
 // Eigen 部分
@@ -87,6 +89,7 @@ class PARSE
     }
 
     typedef Eigen::Matrix<double,9,1> Vector9d;
+    typedef Eigen::Matrix<double,6,1> Vector6d;
 
 
 
@@ -107,13 +110,32 @@ class PARSE
     std::map<string,Vector3d> On_box;
     std::map<string,Vector3d> object_xyz;
     std::map<string,Vector2d> object_pg_pose;
-    std::map<string,string> relationships;
+    std::map<string,string> support_relationships;
+    std::map<string,string> contian_relationships;
+    std::map<string,string> adjoin_relationships;
+
+
+    // record the V of the object
+    std::map<string,Vector3d> object_V;
+    std::map<string, float> intersection_S;
+    std::map<string, float> intersection_V;
+    
+    // Set our initial shape type to be a cube
+    uint32_t shape = visualization_msgs::Marker::CUBE;
+
 
     bool TV=false,desk=false,computer=false,chair=false,air_conditioner=false,floor_=false,desk1=false,desk2=false,desk3=false;
 
+    boost::property_tree::ptree vg_AOG;
+    boost::property_tree::ptree kitchen,conference,bathroom,office,dining,living,bedroom;
+    boost::property_tree::ptree office_object;
     boost::property_tree::ptree knowledgegraph ;
     boost::property_tree::ptree knowledgegraph_object ;
 
+    // compute probability
+    std::vector<std::map<string,float>> id_object_p;
+    std::vector<Vector4d> object_Bbox;
+    std::vector<string> id_object_p_only;
  
     tf::TransformListener listener;
 
@@ -123,6 +145,8 @@ class PARSE
     ros::Subscriber sub_darknet,sub_CameraInfo,sub_depth_camera,sub_color_camera;
 
     ros::Publisher pub_pg_show,pub_pic;
+    ros::Publisher marker_pub;
+
     tf::TransformBroadcaster tf_pub_;
     
     ros::NodeHandle nh_;
