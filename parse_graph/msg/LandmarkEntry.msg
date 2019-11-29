@@ -1,0 +1,4 @@
+string id
+geometry_msgs/Pose tracking_from_landmark_transform
+float64 translation_weight
+float64 rotation_weight
