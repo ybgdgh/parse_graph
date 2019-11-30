@@ -392,6 +392,7 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
     // 画箭头
     // on object
     // 记录与s 和o有关的所有关系，最后insert到s中
+    relationships_p.clear();
     std::map<string, std::map<string, float>> rela_pp;
     for(auto iter = Support_box.begin();iter != Support_box.end(); iter++)
     {
@@ -417,24 +418,7 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
                     Vector2d b(Sbox_support_object_[2],Sbox_support_object_[3]);           
                     Vector2d c(Sbox_support_object_[4],Sbox_support_object_[5]);           
                     Vector2d d(Sbox_support_object_[6],Sbox_support_object_[7]);           
-                    // if(Sbox_on_object[2] > Sbox_support_object_[8]     // Z > Z_
-                    // && (p-a).transpose()*(b-a) > 0
-                    // && (p-a).transpose()*(c-a) > 0
-                    // && (p-d).transpose()*(b-d) > 0
-                    // && (p-d).transpose()*(c-d) > 0)
-                    // {
-                    //     // 连接两端的箭头线，有的可能存在ar里有的不是，因为实时清空所以实时显示更新
-                    //     if(object_2d_ar_pose.count(name_on_object_)>0)
-                    //         cv::arrowedLine(image, cv::Point(object_2d_ar_pose[name_support_object_][0], object_2d_ar_pose[name_support_object_][1]),
-                    //         cv::Point(object_2d_ar_pose[name_on_object_][0], object_2d_ar_pose[name_on_object_][1]), cv::Scalar(0, 255, 0), 2, 4,0,0.1);
-                    //     else if(object_2d_pose.count(name_on_object_)>0)
-                    //         cv::arrowedLine(image, cv::Point(object_2d_ar_pose[name_support_object_][0], object_2d_ar_pose[name_support_object_][1]),
-                    //         cv::Point(object_2d_pose[name_on_object_][0], object_2d_pose[name_on_object_][1]), cv::Scalar(0, 255, 0), 2, 4,0,0.1);
-
-                    //     if(support_relationships.count(name_on_object_) == 0)
-                    //         support_relationships.insert(std::map<string,string>::value_type(name_on_object_,name_support_object_));
-                              
-                    // }   
+          
                     // 在on的面积上均匀100个点进行采样，判断多少位于support的面积之内
                     float kkk=0;
                     int support_sample_count=0;                       
@@ -453,7 +437,7 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
                         }
                     // cout << "kkk : " << kkk << endl;
                     // support概率函数
-                    float x0=0.1;
+                    float x0=object_V[name_on_object_][2]/2;
                     float high_error = abs(Sbox_on_object[2]-object_V[name_on_object_][2]/2 - Sbox_support_object_[8]);
                     float rela_function=0;
                     if(high_error > x0)
@@ -586,14 +570,16 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
                 if(rela_p.size()>1)
                     cout << name_support_object_ << " and " << name_on_object_ << " rela_size: " << rela_p.size() << endl;
 
+                // if(rela_pp.count(name_on_object_)==0)
                 rela_pp.insert(map<string, std::map<string, float>>::value_type(name_on_object_, rela_p));
+                // cout << "rela_pp.size: " << rela_pp.size() << endl;
         
             }
+                cout << "rela_pp.size: " << rela_pp.size() << endl;
 
             // 将on加入到s
-            if(relationships_p.count(name_support_object_)==0)       
-                relationships_p.insert(map<string, std::map<string, std::map<string, float>>>::value_type(name_support_object_, rela_pp));
-            
+            // if(relationships_p.count(name_support_object_)==0)       
+            relationships_p.insert(map<string, std::map<string, std::map<string, float>>>::value_type(name_support_object_, rela_pp));
 
         }
     }
@@ -603,7 +589,10 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
     {
         string sub_name = iter->first;
         cout << "sub_name : " << sub_name << endl;
-        for(auto iter_ = relationships_p[sub_name].begin();iter_ != relationships_p[sub_name].end(); iter_++)
+        std::map<string, std::map<string, float>> sub_rela = iter->second;
+        cout << "sub_rela.size : " << sub_rela.size() << endl;
+        
+        for(auto iter_ = sub_rela.begin();iter_ != sub_rela.end(); iter_++)
         {
             string ob_name = iter_->first;
             cout << "ob_name : " << ob_name << endl;
