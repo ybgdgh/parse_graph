@@ -15,6 +15,8 @@
 #include <map>
 #include <fstream>
 #include <math.h>
+#include <tuple> 
+
 #include <boost/foreach.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -50,18 +52,18 @@
 #include "image_geometry/pinhole_camera_model.h"
 
 #include "draw.h"
+#include "map_compute.h"
+
 
 using namespace std;
 using namespace Eigen;
 
-class PARSE
+class Parse_Node
 {
     public:
-    PARSE(ros::NodeHandle nh,ros::NodeHandle np);
+    Parse_Node(ros::NodeHandle nh,ros::NodeHandle np);
 
-    ~PARSE();
-
-    void orb_pose(const geometry_msgs::PoseStamped& pose_msg);
+    ~Parse_Node();
 
     void tag_detections_mark(const apriltag_ros::AprilTagDetectionArray& msg);
 
@@ -76,6 +78,13 @@ class PARSE
     void init_marker();
 
     bool get_ar_trans(Eigen::Vector3d& trans_ar,Eigen::Quaterniond quat_ar,string ar_name);
+
+    void Publishtf(Vector3d point,std::string tf1, std::string tf2);
+
+    void Listentf(std::string tf1, std::string tf2,Eigen::Isometry3d& T);
+
+    void PublishMarker(std::map<string,Vector3d> object_V);
+
 
     inline boost::property_tree::ptree
     loadPoseFile(const std::string &json_filename)
@@ -92,39 +101,36 @@ class PARSE
     typedef Eigen::Matrix<double,9,1> Vector9d;
     typedef Eigen::Matrix<double,6,1> Vector6d;
 
-
-
-    //定义机器人本体到相机之间的变换
-    Eigen::Isometry3d T_pari_to_other = Eigen::Isometry3d::Identity();
-
-    Eigen::Isometry3d T_base_to_camera = Eigen::Isometry3d::Identity();
-
-    Eigen::Isometry3d T_base_to_apri = Eigen::Isometry3d::Identity();
-
+    // camera info
     double cx,cy,fx,fy;
+
+    // publish the pg and image
     cv::Mat pg_graph,pg_image_show;
+
+    // darknet detect 2d pose 
     std::map<string,Vector2d> object_2d_pose;
+    // ar_tag 2d pose
     std::map<string,Vector2d> object_2d_ar_pose;
 
-    bool support_flag = false, on_flag = false;
+    // depth image receive
+    cv::Mat depth_pic;
+    cv_bridge::CvImagePtr depth_ptr;
+
+    // record support and on object's Bbox
     std::map<string,Vector9d> Support_box;
     std::map<string,Vector3d> On_box;
+    // record object's 3d pose
     std::map<string,Vector3d> object_xyz;
-    std::map<string,Vector2d> object_pg_pose;
-    std::map<string,string> support_relationships;
-    std::map<string,string> contian_relationships;
-    std::map<string,std::vector<string>> adjoin_relationships;
-
 
     // record the V of the object
     std::map<string,Vector3d> object_V;
-    std::map<string,std::map<string, std::map<string, float>>> relationships_p;
-    
-    // Set our initial shape type to be a cube
-    uint32_t shape = visualization_msgs::Marker::CUBE;
 
-
-    bool TV=false,desk=false,computer=false,chair=false,air_conditioner=false,floor_=false,desk1=false,desk2=false,desk3=false;
+    // record the relationships of object
+    std::map<string,string> support_relationships;
+    std::map<string,string> contian_relationships;
+    std::map<string,std::vector<string>> adjoin_relationships;
+  
+    // bool TV=false,desk=false,computer=false,chair=false,air_conditioner=false,floor_=false,desk1=false,desk2=false,desk3=false;
 
     boost::property_tree::ptree vg_AOG;
     boost::property_tree::ptree kitchen,conference,bathroom,office,dining,living,bedroom;
@@ -132,15 +138,11 @@ class PARSE
     boost::property_tree::ptree knowledgegraph ;
     boost::property_tree::ptree knowledgegraph_object ;
 
-    // compute probability
-    std::vector<std::map<string,float>> id_object_p;
-    std::vector<Vector4d> object_Bbox;
-    std::vector<string> id_object_p_only;
+
  
     tf::TransformListener listener;
 
     ros::Subscriber sub_ar_track;
-    ros::Subscriber sub_orb_pose;
 
     ros::Subscriber sub_darknet,sub_CameraInfo,sub_depth_camera,sub_color_camera;
 

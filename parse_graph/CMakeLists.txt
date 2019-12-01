@@ -220,6 +220,7 @@ include_directories(
 
 
 add_executable(parse
+  src/map_compute.cpp
   src/draw.cpp
   src/node.cpp
   src/parse.cpp

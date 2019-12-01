@@ -1,21 +1,25 @@
+/**
+ * Copyright (c) 2019, The Parse_graph author.
+ * All rights reserved.
+ *
+ * Author:ybg
+ * This is the node file for subscribe and publish the ros node.
+ */
+
 #include "node.h"
 
 
-cv::Mat depth_pic;
-cv_bridge::CvImagePtr depth_ptr;
-
-PARSE::PARSE(ros::NodeHandle nh,ros::NodeHandle np)
+Parse_Node::Parse_Node(ros::NodeHandle nh,ros::NodeHandle np)
 :nh_(nh),
  np_(np)
 {
     //订阅odom和激光的话题
-    sub_ar_track = nh_.subscribe("tag_detections", 10, &PARSE::tag_detections_mark,this);
-    sub_orb_pose = nh_.subscribe("orb_slam2_rgbd/pose", 30, &PARSE::orb_pose,this);
-    sub_darknet = nh_.subscribe("darknet_ros/bounding_boxes", 10, &PARSE::darknet_Bbox,this);
-    sub_CameraInfo = nh_.subscribe("camera/color/camera_info", 10, &PARSE::CameraInfo,this);
-    sub_depth_camera = nh_.subscribe("/camera/aligned_depth_to_color/image_raw", 10, &PARSE::depth_Callback,this);
+    sub_ar_track = nh_.subscribe("tag_detections", 10, &Parse_Node::tag_detections_mark,this);
+    sub_darknet = nh_.subscribe("darknet_ros/bounding_boxes", 10, &Parse_Node::darknet_Bbox,this);
+    sub_CameraInfo = nh_.subscribe("camera/aligned_depth_to_color/camera_info", 10, &Parse_Node::CameraInfo,this);
+    sub_depth_camera = nh_.subscribe("/camera/aligned_depth_to_color/image_raw", 10, &Parse_Node::depth_Callback,this);
 
-    sub_color_camera = nh_.subscribe("/camera/color/image_raw", 30, &PARSE::color_Callback,this);
+    sub_color_camera = nh_.subscribe("/camera/color/image_raw", 10, &Parse_Node::color_Callback,this);
 
     pub_pic = nh_.advertise<sensor_msgs::Image>("kg_camera", 10);
     pub_pg_show = nh_.advertise<sensor_msgs::Image>("pg_show", 10);
@@ -23,7 +27,7 @@ PARSE::PARSE(ros::NodeHandle nh,ros::NodeHandle np)
 
 
     // read AOG scene
-    vg_AOG = PARSE::loadPoseFile("/home/dm/AOG_all.json");
+    vg_AOG = Parse_Node::loadPoseFile("/home/dm/AOG_all.json");
     kitchen = vg_AOG.get_child("kitchen");
     conference = vg_AOG.get_child("conference");
     bathroom = vg_AOG.get_child("bathroom");
@@ -36,14 +40,14 @@ PARSE::PARSE(ros::NodeHandle nh,ros::NodeHandle np)
     office_relationships = office.get_child("relationships");
     
 
-    knowledgegraph = PARSE::loadPoseFile("/home/dm/knowledgegraph.json");
+    knowledgegraph = Parse_Node::loadPoseFile("/home/dm/knowledgegraph.json");
     knowledgegraph_object = knowledgegraph.get_child("object");
 
     std::cout << "init finish" << std::endl;
    
 }
 
-PARSE::~PARSE()
+Parse_Node::~Parse_Node()
 {
     if(true)
     {
@@ -97,43 +101,33 @@ PARSE::~PARSE()
             object["XYZ"].append(Sbox_on_object[1]);
             object["XYZ"].append(Sbox_on_object[2]);
 
-            for(auto iter_ = Support_box.begin();iter_ != Support_box.end(); iter_++)
+            if(support_relationships.count(name_on_object) > 0)
             {
-                string name_support_object_ = iter_->first;
-                if(name_support_object_.compare(name_on_object))
+                object["on"] = Json::Value(support_relationships[name_on_object]);
+            }
+
+            if(contian_relationships.count(name_on_object) > 0)
+            {
+                object["contain"] = Json::Value(contian_relationships[name_on_object]);
+            }
+              
+            BOOST_FOREACH (boost::property_tree::ptree::value_type &vtt, knowledgegraph_object)
+            {
+                boost::property_tree::ptree vt = vtt.second;
+                string name_kg = vt.get<string>("name");
+                if(name_on_object == name_kg )
                 {
-                    Vector9d Sbox_support_object_ = iter_->second;
-                    Vector2d p(Sbox_on_object[0],Sbox_on_object[1]);           
-                    Vector2d a(Sbox_support_object_[0],Sbox_support_object_[1]);           
-                    Vector2d b(Sbox_support_object_[2],Sbox_support_object_[3]);           
-                    Vector2d c(Sbox_support_object_[4],Sbox_support_object_[5]);           
-                    Vector2d d(Sbox_support_object_[6],Sbox_support_object_[7]);           
-                    if(Sbox_on_object[2] > Sbox_support_object_[8]     // Z > Z_
-                    && (p-a).transpose()*(b-a) > 0
-                    && (p-a).transpose()*(c-a) > 0
-                    && (p-d).transpose()*(b-d) > 0
-                    && (p-d).transpose()*(c-d) > 0)
+                    BOOST_FOREACH (boost::property_tree::ptree::value_type &v, vt)
                     {
-                        object["on"] = Json::Value(name_support_object_);
-                    }
-                }
-                BOOST_FOREACH (boost::property_tree::ptree::value_type &vtt, knowledgegraph_object)
-                {
-                    boost::property_tree::ptree vt = vtt.second;
-                    string name_kg = vt.get<string>("name");
-                    if(name_on_object == name_kg )
-                    {
-                        BOOST_FOREACH (boost::property_tree::ptree::value_type &v, vt)
+                        if(v.second.get_value<std::string>() != name_kg)
                         {
-                            if(v.second.get_value<std::string>() != name_kg)
-                            {
-                                attribute[v.first]=Json::Value(v.second.get_value<std::string>());
-                            }
+                            attribute[v.first]=Json::Value(v.second.get_value<std::string>());
                         }
-                        object["attribute"] = attribute;
                     }
+                    object["attribute"] = attribute;
                 }
             }
+            
 
             root["object"].append(object);
         }
@@ -156,10 +150,63 @@ PARSE::~PARSE()
     }
 }
 
-
-
-void PARSE::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
+void Parse_Node::Publishtf(Vector3d point,std::string tf1, std::string tf2)
 {
+    // pub the tf 
+    geometry_msgs::PoseStamped pose;
+    pose.pose.position.x = point[0];
+    pose.pose.position.y = point[1];
+    pose.pose.position.z = point[2];
+    pose.pose.orientation.x = 0;
+    pose.pose.orientation.y = 0;
+    pose.pose.orientation.z = 0;
+    pose.pose.orientation.w = 1;
+    pose.header.stamp = ros::Time::now();
+    pose.header.frame_id = "/tf";
+    tf::Stamped<tf::Transform> transform;
+    tf::poseStampedMsgToTF(pose, transform);
+    tf_pub_.sendTransform(tf::StampedTransform(transform,
+                                                transform.stamp_,
+                                                tf1,
+                                                tf2));
+
+}
+
+void Parse_Node::Listentf(std::string tf1, std::string tf2,Eigen::Isometry3d& T)
+{
+    Eigen::Vector3d trans;
+    Eigen::Quaterniond quat;
+
+    tf::StampedTransform transform;
+    try
+    {
+        listener.lookupTransform(tf1, tf2,ros::Time(0), transform);
+    }
+    catch(tf::TransformException e)
+    {
+        ROS_WARN("Failed to compute ar pose, skipping scan (%s)", e.what());
+        ros::Duration(1.0).sleep();
+        return ;
+    }
+    trans << transform.getOrigin().x(),transform.getOrigin().y(),transform.getOrigin().z();
+
+    // cout << "trans : " << trans << endl;
+
+    quat.w() = transform.getRotation().getW();
+    quat.x() = transform.getRotation().getX();
+    quat.y() = transform.getRotation().getY();
+    quat.z() = transform.getRotation().getZ();
+
+    T = Eigen::Isometry3d::Identity();
+    T.rotate ( quat );
+    T.pretranslate ( trans );
+
+}
+
+void Parse_Node::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
+{
+
+    //定义机器人本体到相机之间的变换
     Eigen::Vector3d trans_Bbox;
     Eigen::Quaterniond quat_Bbox;
 
@@ -184,87 +231,16 @@ void PARSE::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
     quat_Bbox.y() = transform_Bbox.getRotation().getY();
     quat_Bbox.z() = transform_Bbox.getRotation().getZ();
 
+    Eigen::Isometry3d T_base_to_camera = Eigen::Isometry3d::Identity();
     T_base_to_camera = Eigen::Isometry3d::Identity();
     T_base_to_camera.rotate ( quat_Bbox );
     T_base_to_camera.pretranslate ( trans_Bbox );
+    
+    std::map<string,Vector4d> id_object_p_only;
 
-    // 统计同一物体出现多个概率的情况
-    int count_object=0;
-    bool happen_flag=false;
-    id_object_p.clear();
-    std::map<string,float> object_p;
-    object_Bbox.clear();
-    for(const darknet_ros_msgs::BoundingBox& Bbox : Bound_msg.bounding_boxes)
-    {
-        happen_flag=false;
-        object_p.clear();
-        if(!object_Bbox.empty())
-        {
-            for(int i=0;i<object_Bbox.size();i++)
-            {
-                if(Bbox.xmin == object_Bbox[i](0) && Bbox.xmax == object_Bbox[i](1) && Bbox.ymin == object_Bbox[i](2) && Bbox.ymax == object_Bbox[i](3))
-                {
-                    id_object_p[i].insert(std::map<string,float>::value_type(Bbox.Class,Bbox.probability));
-                    cout << "happend!" << endl;
-                    happen_flag=true;
-                    break;
-                }
-               
-            }
-            
-        }
-        if(happen_flag==true) 
-            continue;
-        
-        // 保存Bbox
-        object_Bbox.push_back(Vector4d(Bbox.xmin,Bbox.xmax,Bbox.ymin,Bbox.ymax));
-        // 保存类别对应的p
-        object_p.insert(std::map<string,float>::value_type(Bbox.Class,Bbox.probability));
-        // 保存该类别到object
-        id_object_p.push_back(object_p);
-    }
+    Map_Compute::Compute_Object_Map(office_object,Bound_msg,id_object_p_only);
 
-    // std::cout << "!!!!!!!!!!!!!!" << id_object_p.size() << endl;
-    id_object_p_only.clear();
-    for(int i=0;i<id_object_p.size();i++)
-    {
-        string map_name;
-        float MAP=0;
-        if(id_object_p[i].size()>1)
-        {
-            for(auto iter_ = id_object_p[i].begin();iter_ != id_object_p[i].end(); iter_++)
-            {
-                // cout << iter_->first << " : " << iter_->second;
-                BOOST_FOREACH (boost::property_tree::ptree::value_type &v, office_object)
-                {
-                    if(iter_->first == v.first)
-                    {
-                        float office_object_p = office_object.get<float>(iter_->first);
-                        
-                        if(MAP < iter_->second*office_object_p)
-                        {
-                            MAP = iter_->second*office_object_p;
-                            map_name = iter_->first;                        
-                        }
-                        cout << iter_->first << " : " << iter_->second << " * " << office_object_p << " = " << iter_->second*office_object_p << endl;                      
-                        break;
-                    }
-                }   
-            }
-        }
-        else
-        {
-            map_name = id_object_p[i].begin()->first;
-        }
-
-        id_object_p_only.push_back(map_name);
-        // cout << i ;
-
-        // cout << map_name << " : " << MAP;
-        
-        // cout << endl;
-    }
-
+    // cout << "id_object_p_only size : " << id_object_p_only.size() << endl;
 
     std::stringstream sss;
     object_2d_pose.clear();
@@ -292,28 +268,10 @@ void PARSE::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
 
         S_darknet_object = T_base_to_camera * point;
 
-        S_darknet_object[0] = float(round(S_darknet_object[0]*1000+0.5f)/1000.0);
-        S_darknet_object[1] = float(round(S_darknet_object[1]*1000+0.5f)/1000.0);
-        S_darknet_object[2] = float(round(S_darknet_object[2]*1000+0.5f)/1000.0);
-
         if(Bbox.Class == "cup" || Bbox.Class == "mouse")
         {
-            
-            geometry_msgs::PoseStamped pose;
-            pose.pose.position.x = x;
-            pose.pose.position.y = y;
-            pose.pose.position.z = mean_depth;
-            pose.pose.orientation.x = 0;
-            pose.pose.orientation.y = 0;
-            pose.pose.orientation.z = 0;
-            pose.pose.orientation.w = 1;
-            pose.header = Bound_msg.header;
-            tf::Stamped<tf::Transform> dark_transform;
-            tf::poseStampedMsgToTF(pose, dark_transform);
-            tf_pub_.sendTransform(tf::StampedTransform(dark_transform,
-                                                        dark_transform.stamp_,
-                                                        "camera",
-                                                        name_darknet));
+            // publish the tf of cmaera and darktag
+            Parse_Node::Publishtf(point,"camera",name_darknet);
 
             Vector2d d_pose((Bbox.xmin+Bbox.xmax)/2,(Bbox.ymin+Bbox.ymax)/2);
 
@@ -322,7 +280,9 @@ void PARSE::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
 
             // the scale of boundingbox    
             Vector3d marker_scale;
-            marker_scale << abs(x2-x1),max(abs(x2-x1),abs(y2-y1)),abs(y2-y1);
+            marker_scale << (abs(x2-x1)>0?abs(x2-x1):0.01),
+                            (max(abs(x2-x1),abs(y2-y1))>0?max(abs(x2-x1),abs(y2-y1)):0.01),
+                            (abs(y2-y1)>0?abs(y2-y1):0.01);
 
             if(On_box.count(Bbox.Class)>0)
             {
@@ -345,36 +305,285 @@ void PARSE::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
     }
 }
 
-void PARSE::CameraInfo(const sensor_msgs::CameraInfo& camera_info)
-{
-    image_geometry::PinholeCameraModel camera_model;
-    camera_model.fromCameraInfo(camera_info);
-      // Get camera intrinsic properties for rectified image.
-    fx = camera_model.fx(); // focal length in camera x-direction [px]
-    fy = camera_model.fy(); // focal length in camera y-direction [px]
-    cx = camera_model.cx(); // optical center x-coordinate [px]
-    cy = camera_model.cy(); // optical center y-coordinate [px]
 
+
+void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray& msg)
+{
+    int t=0;
+    int sum=0;
+    bool support_flag = false, on_flag = false;
+
+    std::stringstream ss;
+
+    object_2d_ar_pose.clear();
+    for(const apriltag_ros::AprilTagDetection& ar_marker : msg.detections)
+    {
+        ss.str("");
+        ss << "tag_"<< ar_marker.id[0];
+
+        Eigen::Vector3d trans_object;
+        Eigen::Quaterniond quat_object;
+
+        tf::StampedTransform transform;
+        try
+        {
+            listener.lookupTransform("/map", ss.str(),ros::Time(0), transform);
+        }
+        catch(tf::TransformException e)
+        {
+            ROS_WARN("Failed to compute ar pose, skipping scan (%s)", e.what());
+            ros::Duration(1.0).sleep();
+            return ;
+        }
+        trans_object << transform.getOrigin().x(),transform.getOrigin().y(),transform.getOrigin().z();
+
+        quat_object.w() = transform.getRotation().getW();
+        quat_object.x() = transform.getRotation().getX();
+        quat_object.y() = transform.getRotation().getY();
+        quat_object.z() = transform.getRotation().getZ();
+
+        // ROS_INFO("%d",  ar_marker.id[0]);
+
+        Eigen::Isometry3d T_base_to_apri = Eigen::Isometry3d::Identity();
+        T_base_to_apri = Eigen::Isometry3d::Identity();
+        T_base_to_apri.rotate(quat_object.toRotationMatrix());
+        T_base_to_apri.pretranslate(trans_object);
+
+        string ar_pose_name;
+        switch(ar_marker.id[0])
+        {
+            case 0 :
+                ar_pose_name = "TV";
+                break;
+            case 1 :
+                ar_pose_name = "desk";
+                break;
+            case 2 :
+                ar_pose_name = "computer";
+                break;
+            case 3 :
+                ar_pose_name = "chair";
+                break;
+            case 4 :
+                ar_pose_name = "air_conditioner";
+                break;
+        }
+
+        // add the 2d pose to map
+        // if(object_2d_ar_pose.count(ar_pose_name) == 0)
+        object_2d_ar_pose.insert(std::map<string,Vector2d>::value_type(ar_pose_name,Vector2d(ar_marker.tdposex[0],ar_marker.tdposey[0])));
+
+
+        string name;
+        Vector9d S_support_object;
+        Vector3d S_on_object;
+        Vector3d marker_scale;
+
+        // TV
+        if(ar_marker.id[0] == 0)
+        {
+            name = "TV";
+
+            Eigen::Vector3d trans(trans_object[0],trans_object[1],trans_object[2]);    
+
+            S_on_object << trans(0),trans(1),trans_object[2];     
+            
+            marker_scale << 0.5,0.3,0.1;
+
+            on_flag = true;
+        }
+        // desk support function && desk == false
+        else if(ar_marker.id[0] == 1 )
+        {
+            name = "desk";
+
+            Eigen::Vector3d t2(1,0,0);
+            Eigen::Vector3d t3(0,-2,0);
+            Eigen::Vector3d t4(1,-2,0);
+
+            Eigen::Vector3d trans1(trans_object[0],trans_object[1],trans_object[2]);    
+
+            Eigen::Vector3d trans2 = T_base_to_apri * t2; 
+
+            Eigen::Vector3d trans3 = T_base_to_apri * t3;
+
+            Eigen::Vector3d trans4 = T_base_to_apri * t4;
+
+            Parse_Node::Publishtf(trans2,"map","desk_2");
+            Parse_Node::Publishtf(trans3,"map","desk_3");
+            Parse_Node::Publishtf(trans4,"map","desk_4");
+
+            S_support_object << trans1(0),trans1(1),
+                        trans2(0),trans2(1),
+                        trans3(0),trans3(1),
+                        trans4(0),trans4(1),
+                        trans_object[2];
+
+            marker_scale << 1,2,1;
+            
+            support_flag = true;
+            // cout << "T_base_to_apri :" << T_base_to_apri.matrix() << endl;
+            // cout << "desk : " << S_support_object << endl;
+        }
+        // computer support_function
+        else if(ar_marker.id[0] == 2)
+        {
+            name = "computer";
+
+            Eigen::Vector3d t2(0.1,0,0);
+            Eigen::Vector3d t3(0,-0.3,0);
+            Eigen::Vector3d t4(0.1,-0.3,0);
+
+            Eigen::Vector3d trans1(trans_object[0],trans_object[1],trans_object[2]);    
+
+            Eigen::Vector3d trans2 = T_base_to_apri * t2; 
+
+            Eigen::Vector3d trans3 = T_base_to_apri * t3;
+
+            Eigen::Vector3d trans4 = T_base_to_apri * t4;
+
+            S_support_object << trans1(0),trans1(1),
+                        trans2(0),trans2(1),
+                        trans3(0),trans3(1),
+                        trans4(0),trans4(1),
+                        trans_object[2];
+
+            marker_scale << 0.1,0.3,0.3;
+            
+            support_flag = true;
+            
+        }
+        // chair support_function
+        else if(ar_marker.id[0] == 3)
+        {
+            name = "chair";
+
+            Eigen::Vector3d t2(0.2,0,0);
+            Eigen::Vector3d t3(0,-0.2,0);
+            Eigen::Vector3d t4(0.2,-0.2,0);
+
+            Eigen::Vector3d trans1(trans_object[0],trans_object[1],trans_object[2]);    
+
+            Eigen::Vector3d trans2 = T_base_to_apri * t2; 
+
+            Eigen::Vector3d trans3 = T_base_to_apri * t3;
+
+            Eigen::Vector3d trans4 = T_base_to_apri * t4;
+
+            S_support_object << trans1(0),trans1(1),
+                        trans2(0),trans2(1),
+                        trans3(0),trans3(1),
+                        trans4(0),trans4(1),
+                        trans_object[2];
+
+            marker_scale << 0.2,0.2,-0.5;
+            
+            support_flag = true;            
+
+            // cout << "chair : " << S_object << endl; 
+        }
+        // air_conditioner
+        else if(ar_marker.id[0] == 4)
+        {
+            name = "air_conditioner";
+
+            Eigen::Vector3d trans(trans_object[0],trans_object[1],trans_object[2]);    
+
+            S_on_object << trans(0),trans(1),trans_object[2];
+
+            marker_scale << 0.1,1,0.1;
+            
+            on_flag = true;
+            
+        }
+        else if(ar_marker.id[0] == 5)
+        {
+            name = "desk1";
+
+            Eigen::Vector3d t2(0,0,0.5);
+            Eigen::Vector3d trans = T_base_to_apri * t2;    
+
+            S_on_object << trans(0),trans(1),trans_object[2];
+            // cout << "S_on_object" << S_on_object << endl;
+            // cout << "trans" << trans << endl;
+            marker_scale << 0.1,0.3,0.3;
+            
+            on_flag = true;
+        }
+        else if(ar_marker.id[0] == 6)
+        {
+            name = "desk2";
+
+            Eigen::Vector3d t2(0,0,0.5);
+            Eigen::Vector3d trans = T_base_to_apri * t2;    
+
+            S_on_object << trans(0),trans(1),trans_object[2];
+            marker_scale << 0.1,0.3,0.3;
+
+            on_flag = true;
+        }
+        else if(ar_marker.id[0] == 7)
+        {
+            name = "desk3";
+
+            Eigen::Vector3d t2(0,0,0.5);
+            Eigen::Vector3d trans = T_base_to_apri * t2;    
+
+            S_on_object << trans(0),trans(1),trans_object[2];
+            marker_scale << 0.1,0.3,0.3;
+
+            on_flag = true;
+        }
+        
+        else 
+        {
+            continue;
+        }
+
+
+        if(support_flag == true)
+        {
+            support_flag = false;
+
+            if(Support_box.count(name) > 0)
+            {
+                Support_box[name]=S_support_object;
+                object_xyz[name]=Vector3d(S_support_object[0],S_support_object[1],S_support_object[8]);
+                object_V[name]=marker_scale;
+                continue;
+            }
+            Support_box.insert(std::map<string,Vector9d>::value_type(name,S_support_object));
+            object_xyz.insert(std::map<string,Vector3d>::value_type(name,Vector3d(S_support_object[0],S_support_object[1],S_support_object[8])));
+            object_V.insert(std::map<string,Vector3d>::value_type(name,marker_scale));
+            
+        }
+        else if(on_flag == true)
+        {
+            on_flag = false;
+
+            if(On_box.count(name))
+            {
+                On_box[name]=S_on_object;
+                object_xyz[name]=S_on_object;
+                object_V[name]=marker_scale;
+
+            }
+            On_box.insert(std::map<string,Vector3d>::value_type(name,S_on_object));
+            object_xyz.insert(std::map<string,Vector3d>::value_type(name,S_on_object));
+            object_V.insert(std::map<string,Vector3d>::value_type(name,marker_scale));
+            
+        }
+ 
+        
+    }
+   
+    //ROS_INFO("%d", t);
+    
 }
 
 
-void PARSE::depth_Callback(const sensor_msgs::ImageConstPtr& depth_msg)
-{
-  try
-  {
-    depth_ptr = cv_bridge::toCvCopy(depth_msg, sensor_msgs::image_encodings::TYPE_32FC1); 
 
-  }
-  catch (cv_bridge::Exception& e)
-  {
-    ROS_ERROR("Could not convert from '%s' to 'mono16'.", depth_msg->encoding.c_str());
-  }
-
-  depth_pic = depth_ptr->image;
-}
-
-
-void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
+void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
 {
     cv_bridge::CvImagePtr cv_ptr;
     try
@@ -389,285 +598,84 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
 
     cv::Mat image = cv_ptr->image;
 
-    // 画箭头
-    // on object
-    // 记录与s 和o有关的所有关系，最后insert到s中
-    relationships_p.clear();
-    std::map<string, std::map<string, float>> rela_pp;
-    for(auto iter = Support_box.begin();iter != Support_box.end(); iter++)
+
+    // compute map relationships
+    std::vector<std::tuple<string,string,string,float>> rela_after_map;
+    Map_Compute::Compute_Relationships_Map(office_relationships,Support_box,On_box,object_V,rela_after_map);
+    for(int i=0;i<rela_after_map.size();i++)
     {
-        string name_support_object_ = iter->first;
-        rela_pp.clear();
-        if(object_2d_ar_pose.count(name_support_object_)>0)
-        {
-            Vector9d Sbox_support_object_ = iter->second;
-
-            std::map<string,float> rela_p;
-            for(auto iter_ = On_box.begin();iter_ != On_box.end(); iter_++)
-            {
-                string name_on_object_ = iter_->first;
-                cout << name_on_object_ << endl;
-                rela_p.clear();
-                if(object_2d_ar_pose.count(name_on_object_)>0 || object_2d_pose.count(name_on_object_)>0)
-                {           
-                    Vector3d Sbox_on_object = iter_->second;
-
-                    // support       
-                    Vector2d p(Sbox_on_object[0],Sbox_on_object[1]);           
-                    Vector2d a(Sbox_support_object_[0],Sbox_support_object_[1]);           
-                    Vector2d b(Sbox_support_object_[2],Sbox_support_object_[3]);           
-                    Vector2d c(Sbox_support_object_[4],Sbox_support_object_[5]);           
-                    Vector2d d(Sbox_support_object_[6],Sbox_support_object_[7]);           
-          
-                    // 在on的面积上均匀100个点进行采样，判断多少位于support的面积之内
-                    float kkk=0;
-                    int support_sample_count=0;                       
-                    for(float i=Sbox_on_object[0]-object_V[name_on_object_][0]/2.0;i<Sbox_on_object[0]+object_V[name_on_object_][0]/2.0;i=i+(object_V[name_on_object_][0]/10.0))
-                        for(float j=Sbox_on_object[1]-object_V[name_on_object_][1]/2.0;j<Sbox_on_object[1]+object_V[name_on_object_][1]/2.0;j=j+(object_V[name_on_object_][1]/10.0))
-                        {
-                            kkk++;
-                            Vector2d pp(Sbox_on_object[0],Sbox_on_object[1]);                                       
-                            if((pp-a).transpose()*(b-a) > 0
-                            && (pp-a).transpose()*(c-a) > 0
-                            && (pp-d).transpose()*(b-d) > 0
-                            && (pp-d).transpose()*(c-d) > 0)
-                            {
-                                support_sample_count++;
-                            }
-                        }
-                    // cout << "kkk : " << kkk << endl;
-                    // support概率函数
-                    float x0=object_V[name_on_object_][2]/2;
-                    float high_error = abs(Sbox_on_object[2]-object_V[name_on_object_][2]/2 - Sbox_support_object_[8]);
-                    float rela_function=0;
-                    if(high_error > x0)
-                        rela_function=0;
-                    else 
-                        rela_function=cos(M_PI*high_error/(2*x0));
-                    cout << "high_error : " << high_error << ", x0 : " << x0 << " ,rela_function : " << rela_function << endl;
-                    cout << "support_sample_count : " << support_sample_count << " later: " << support_sample_count*rela_function << endl;
-                    
-                    float rela_on_p=float(support_sample_count*rela_function/kkk);
-                    if(rela_p.count("ON") == 0)
-                    {
-                        rela_p.insert(map<string, float>::value_type("ON", rela_on_p));
-                        std::stringstream sss;
-                        sss << "on:" << rela_on_p << endl;
-                        if(rela_on_p>0.5){
-                            // 连接两端的箭头线，有的可能存在ar里有的不是，因为实时清空所以实时显示更新
-                            if(object_2d_ar_pose.count(name_on_object_)>0)
-                            {
-                                cv::arrowedLine(image, cv::Point(object_2d_ar_pose[name_support_object_][0], object_2d_ar_pose[name_support_object_][1]),
-                                cv::Point(object_2d_ar_pose[name_on_object_][0], object_2d_ar_pose[name_on_object_][1]), cv::Scalar(0, 255, 0), 2, 4,0,0.1);
-
-                                cv::putText(image, sss.str(), cv::Point((object_2d_ar_pose[name_support_object_][0]+object_2d_ar_pose[name_on_object_][0])/2,
-                                (object_2d_ar_pose[name_support_object_][1]+object_2d_ar_pose[name_on_object_][1])/2+20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 2, 8);
-
-                            }
-                            else if(object_2d_pose.count(name_on_object_)>0)
-                            {
-                                cv::arrowedLine(image, cv::Point(object_2d_ar_pose[name_support_object_][0], object_2d_ar_pose[name_support_object_][1]),
-                                cv::Point(object_2d_pose[name_on_object_][0], object_2d_pose[name_on_object_][1]), cv::Scalar(0, 255, 0), 2, 4,0,0.1);
-                
-                                cv::putText(image, sss.str(), cv::Point((object_2d_ar_pose[name_support_object_][0]+object_2d_pose[name_on_object_][0])/2,
-                                (object_2d_ar_pose[name_support_object_][1]+object_2d_pose[name_on_object_][1])/2+20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 2, 8);
-
-                            }
-
-                            if(support_relationships.count(name_on_object_) == 0)
-                                support_relationships.insert(std::map<string,string>::value_type(name_on_object_,name_support_object_));
-                        }
-                    }             
-            
-
-                    // contain
-                    // 在on的体积上均匀1000个点进行采样，判断多少位于support的体积之内                    
-                    int contain_sample_count=0;
-                    float jjj =0;
-                    for(float i=Sbox_on_object[0]-object_V[name_on_object_][0]/2.0;i<Sbox_on_object[0]+object_V[name_on_object_][0]/2.0;i=i+(object_V[name_on_object_][0]/10.0))
-                        for(float j=Sbox_on_object[1]-object_V[name_on_object_][1]/2.0;j<Sbox_on_object[1]+object_V[name_on_object_][1]/2.0;j=j+(object_V[name_on_object_][1]/10.0))
-                            for(float k = Sbox_on_object[2]-object_V[name_on_object_][2]/2 ; k < Sbox_on_object[2]+object_V[name_on_object_][2]/2 ; k = k+object_V[name_on_object_][2]/10.0)                    
-                            {
-                                jjj++;
-                                if(i > min(Sbox_support_object_[0],Sbox_support_object_[6])     //Xmax > Xmin
-                                && i < max(Sbox_support_object_[0],Sbox_support_object_[6])     //Xmax > Xmin
-                                && j > min(Sbox_support_object_[1],Sbox_support_object_[7])     //Ymax > Ymin
-                                && j < max(Sbox_support_object_[1],Sbox_support_object_[7])     //Ymax > Ymin
-                                && k > Sbox_support_object_[8]-object_V[name_on_object_][2]   //z > Zmin
-                                && k < Sbox_support_object_[8])  //z < Zmax
-                                {
-                                    contain_sample_count++;
-                                }
-                            }
-                    // cout << "jjj : " << jjj << endl;                    
-                    cout << "contain_sample_count : " << contain_sample_count << endl;
-                    float rela_contain_p=float(contain_sample_count/jjj);                   
-                    if(rela_p.count("IN") == 0)
-                    {
-                        rela_p.insert(map<string, float>::value_type("IN", rela_contain_p));      
-                        std::stringstream sss;
-                        sss << "contain:" << rela_contain_p << endl;           
-                        
-                        if(rela_contain_p>0.5)
-                        {
-                            // 连接两端的箭头线，有的可能存在ar里有的不是，因为实时清空所以实时显示更新
-                            if(object_2d_ar_pose.count(name_on_object_)>0)
-                            {
-                                cv::arrowedLine(image, cv::Point(object_2d_ar_pose[name_support_object_][0], object_2d_ar_pose[name_support_object_][1]),
-                                cv::Point(object_2d_ar_pose[name_on_object_][0], object_2d_ar_pose[name_on_object_][1]), cv::Scalar(0, 0, 255), 2, 4,0,0.1);
-
-                                cv::putText(image, sss.str(), cv::Point((object_2d_ar_pose[name_support_object_][0]+object_2d_ar_pose[name_on_object_][0])/2,
-                                (object_2d_ar_pose[name_support_object_][1]+object_2d_ar_pose[name_on_object_][1])/2+10), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 0, 0), 2, 8);
-
-                            }
-                            else if(object_2d_pose.count(name_on_object_)>0)
-                            {
-                                cv::arrowedLine(image, cv::Point(object_2d_ar_pose[name_support_object_][0], object_2d_ar_pose[name_support_object_][1]),
-                                cv::Point(object_2d_pose[name_on_object_][0], object_2d_pose[name_on_object_][1]), cv::Scalar(0, 0, 255), 2, 4,0,0.1);
-
-                                cv::putText(image, sss.str(), cv::Point((object_2d_ar_pose[name_support_object_][0]+object_2d_pose[name_on_object_][0])/2,
-                                (object_2d_ar_pose[name_support_object_][1]+object_2d_pose[name_on_object_][1])/2+10), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 0, 0), 2, 8);
-                            }    
-                            
-                            if(contian_relationships.count(name_on_object_) == 0)
-                                contian_relationships.insert(std::map<string,string>::value_type(name_on_object_,name_support_object_));
-                        }  
-                    }
-
-                    // adjoin
-                //    if(contain_sample_count <100 && support_sample_count < 10 &&
-                //    sqrt((Sbox_on_object[0]-Sbox_support_object_[0])*(Sbox_on_object[0]-Sbox_support_object_[0])+
-                //    (Sbox_on_object[1]-Sbox_support_object_[1])*(Sbox_on_object[1]-Sbox_support_object_[1])) < 
-                //    (max(object_V[name_on_object_][0],object_V[name_on_object_][1])+max(object_V[name_support_object_][0],object_V[name_support_object_][1]))*2)
-                //    {
-                //        float distance = sqrt((Sbox_on_object[0]-Sbox_support_object_[0])*(Sbox_on_object[0]-Sbox_support_object_[0])+
-                //         (Sbox_on_object[1]-Sbox_support_object_[1])*(Sbox_on_object[1]-Sbox_support_object_[1]));
-
-                //         cout << "distance : " << distance << endl;
-
-                //         if(object_2d_ar_pose.count(name_on_object_)>0)
-                //             cv::arrowedLine(image, cv::Point(object_2d_ar_pose[name_support_object_][0], object_2d_ar_pose[name_support_object_][1]),
-                //             cv::Point(object_2d_ar_pose[name_on_object_][0], object_2d_ar_pose[name_on_object_][1]), cv::Scalar(255, 0, 0), 2, 4,0,0.1);
-                //         else if(object_2d_pose.count(name_on_object_)>0)
-                //             cv::arrowedLine(image, cv::Point(object_2d_ar_pose[name_support_object_][0], object_2d_ar_pose[name_support_object_][1]),
-                //             cv::Point(object_2d_pose[name_on_object_][0], object_2d_pose[name_on_object_][1]), cv::Scalar(255, 0, 0), 2, 4,0,0.1);
-
-                //        if(adjoin_relationships.count(name_on_object_)>0)
-                //        {
-                //            adjoin_relationships[name_support_object_].push_back(name_on_object_);
-                //        }
-                //        else
-                //        {
-                //             std::vector<string> adjoin_object;
-                //             adjoin_object.push_back(name_on_object_);
-                //             adjoin_relationships.insert(map<string, std::vector<string>>::value_type(name_support_object_, adjoin_object));
-                //        }
-                //    }
-
-                }
-                
-                // 记录与s和o有关的所有关系，以on为string
-                if(rela_p.size()>1)
-                    cout << name_support_object_ << " and " << name_on_object_ << " rela_size: " << rela_p.size() << endl;
-
-                // if(rela_pp.count(name_on_object_)==0)
-                rela_pp.insert(map<string, std::map<string, float>>::value_type(name_on_object_, rela_p));
-                // cout << "rela_pp.size: " << rela_pp.size() << endl;
+        string Ob_name,Sub_name,Relation;
+        float Relation_P;
+        std::tie(Ob_name,Sub_name,Relation,Relation_P) = rela_after_map[i];
+        cout << Ob_name << " , " << Sub_name << " " << Relation << " is " << Relation_P << endl;
         
-            }
-                cout << "rela_pp.size: " << rela_pp.size() << endl;
-
-            // 将on加入到s
-            // if(relationships_p.count(name_support_object_)==0)       
-            relationships_p.insert(map<string, std::map<string, std::map<string, float>>>::value_type(name_support_object_, rela_pp));
-
-        }
-    }
-
-    // 画关系和概率
-    for(auto iter = relationships_p.begin();iter != relationships_p.end(); iter++)
-    {
-        string sub_name = iter->first;
-        cout << "sub_name : " << sub_name << endl;
-        std::map<string, std::map<string, float>> sub_rela = iter->second;
-        cout << "sub_rela.size : " << sub_rela.size() << endl;
-        
-        for(auto iter_ = sub_rela.begin();iter_ != sub_rela.end(); iter_++)
+        if(object_2d_ar_pose.count(Sub_name)>0)
         {
-            string ob_name = iter_->first;
-            cout << "ob_name : " << ob_name << endl;
-            std::map<string, float> rela_p_all = iter_->second;
-            cout << "rela_p_all.size:" << rela_p_all.size() << endl;
-            // 若出现多个关系概率，使用map进行验证
-            if(rela_p_all.size()>1)
+            if(Relation == "ON")
             {
-                string map_name;
-                float MAP=0;
-                BOOST_FOREACH (boost::property_tree::ptree::value_type &v, office_relationships) //object层
+                std::stringstream sss;
+                sss << "on:" << Relation_P << endl;
+                // 连接两端的箭头线，有的可能存在ar里有的不是，因为实时清空所以实时显示更新
+                if(object_2d_ar_pose.count(Ob_name)>0)
                 {
-                    if(v.first == ob_name)
-                    {
-                        boost::property_tree::ptree vt = v.second;
-                        BOOST_FOREACH (boost::property_tree::ptree::value_type &vtt, vt)  // subject层
-                        {
-                            boost::property_tree::ptree vttt = vtt.second;
-                            if(vtt.first == sub_name)
-                            {
-                                for(auto iter__ = rela_p_all.begin();iter__ != rela_p_all.end(); iter__++)
-                                {
-                                    string rela_all_name = iter__->first;
-                                    float rela_all_p = iter__->second;
-                                    BOOST_FOREACH (boost::property_tree::ptree::value_type &vtttt, vttt)  // 关系层
-                                    {
-                                        if(rela_all_name == vtttt.first)
-                                        {
-                                            if(MAP < rela_all_p*vttt.get<float>(vtttt.first))
-                                            {
-                                                MAP = rela_all_p*vttt.get<float>(vtttt.first);
-                                                map_name = rela_all_name;
-                                            }
-                                            cout << rela_all_name << " : " << rela_all_p << " * " << vttt.get<float>(vtttt.first) << " = " << MAP << endl;
-                                            
-                                        }
-                                    }
-                                }
-                            }
-                            
-                        }
-                    }
-                }
-                cout << "map_name : " << map_name << endl;
+                    cv::arrowedLine(image, cv::Point(object_2d_ar_pose[Sub_name][0], object_2d_ar_pose[Sub_name][1]),
+                    cv::Point(object_2d_ar_pose[Ob_name][0], object_2d_ar_pose[Ob_name][1]), cv::Scalar(0, 255, 0), 2, 4,0,0.1);
 
+                    cv::putText(image, sss.str(), cv::Point((object_2d_ar_pose[Sub_name][0]+object_2d_ar_pose[Ob_name][0])/2,
+                    (object_2d_ar_pose[Sub_name][1]+object_2d_ar_pose[Ob_name][1])/2+20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 2, 8);
+
+                }
+                else if(object_2d_pose.count(Ob_name)>0)
+                {
+                    cv::arrowedLine(image, cv::Point(object_2d_ar_pose[Sub_name][0], object_2d_ar_pose[Sub_name][1]),
+                    cv::Point(object_2d_pose[Ob_name][0], object_2d_pose[Ob_name][1]), cv::Scalar(0, 255, 0), 2, 4,0,0.1);
+
+                    cv::putText(image, sss.str(), cv::Point((object_2d_ar_pose[Sub_name][0]+object_2d_pose[Ob_name][0])/2,
+                    (object_2d_ar_pose[Sub_name][1]+object_2d_pose[Ob_name][1])/2+20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 2, 8);
+
+                }
+
+                if(support_relationships.count(Ob_name) == 0)
+                    support_relationships.insert(std::map<string,string>::value_type(Ob_name,Sub_name));
+                else if(support_relationships.count(Ob_name) > 0)
+                    support_relationships[Ob_name]=Sub_name;
                 
             }
-            
-        }
 
+            if(Relation == "IN")
+            {
+                std::stringstream sss;
+                sss << "in:" << Relation_P << endl;
+                // 连接两端的箭头线，有的可能存在ar里有的不是，因为实时清空所以实时显示更新
+                if(object_2d_ar_pose.count(Ob_name)>0)
+                {
+                    cv::arrowedLine(image, cv::Point(object_2d_ar_pose[Sub_name][0], object_2d_ar_pose[Sub_name][1]),
+                    cv::Point(object_2d_ar_pose[Ob_name][0], object_2d_ar_pose[Ob_name][1]), cv::Scalar(0, 0, 255), 2, 4,0,0.1);
+
+                    cv::putText(image, sss.str(), cv::Point((object_2d_ar_pose[Sub_name][0]+object_2d_ar_pose[Ob_name][0])/2,
+                    (object_2d_ar_pose[Sub_name][1]+object_2d_ar_pose[Ob_name][1])/2+20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 0, 0), 2, 8);
+
+                }
+                else if(object_2d_pose.count(Ob_name)>0)
+                {
+                    cv::arrowedLine(image, cv::Point(object_2d_ar_pose[Sub_name][0], object_2d_ar_pose[Sub_name][1]),
+                    cv::Point(object_2d_pose[Ob_name][0], object_2d_pose[Ob_name][1]), cv::Scalar(0, 0, 255), 2, 4,0,0.1);
+
+                    cv::putText(image, sss.str(), cv::Point((object_2d_ar_pose[Sub_name][0]+object_2d_pose[Ob_name][0])/2,
+                    (object_2d_ar_pose[Sub_name][1]+object_2d_pose[Ob_name][1])/2+20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 0, 0), 2, 8);
+
+                }
+
+                if(contian_relationships.count(Ob_name) == 0)
+                    contian_relationships.insert(std::map<string,string>::value_type(Ob_name,Sub_name));
+                else if(contian_relationships.count(Ob_name) > 0)
+                    contian_relationships[Ob_name]=Sub_name;
+            }
+        }
+        
+                   
     }
     
-
-
-    // // has 判断父子关系
-    // for(auto iter = On_box.begin();iter != On_box.end(); iter++)
-    // {
-    //     string relation_has_name = iter->first;
-    //     Vector3d relation_has_coord = iter->second;
-    //     for(auto iter_ = On_box.begin();iter_ != On_box.end(); iter_++)
-    //     {
-    //         string relation_has_name_ = iter_->first;
-    //         if(relation_has_name_ != relation_has_name)
-    //         {
-    //             for(float i=object_xyz[[0]-object_V[name_on_object_][0]/2.0;i<Sbox_on_object[0]+object_V[name_on_object_][0]/2.0;i=i+(object_V[name_on_object_][0]/10.0))
-    //                 for(float j=Sbox_on_object[1]-object_V[name_on_object_][1]/2.0;j<Sbox_on_object[1]+object_V[name_on_object_][1]/2.0;j=j+(object_V[name_on_object_][1]/10.0))
-    //                     for(float k = Sbox_on_object[2]-object_V[name_on_object_][2]/2 ; k < Sbox_on_object[2]+object_V[name_on_object_][2]/2 ; k = k+object_V[name_on_object_][2]/10.0)                    
-                            
-    //         }
-    //     }
-
-        
-    // }
-                    
-
 
 
    
@@ -779,7 +787,7 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
     int y_ = 50;
     int count = 0;
     std::stringstream ss;
-    object_pg_pose.clear();
+    std::map<string,Vector2d> object_pg_pose;
     if(cols > 0)
     {
         cv::Mat image_pg(rows, cols, CV_8UC3, Scalar(255,255,255));
@@ -813,7 +821,11 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
             Draw_PG::draw_attribute_arrow(image_pg,x_-30, y_+320,x_-30, y_+420);
 
             ss.str("");
-            ss << object_xyz_[0] << "," << object_xyz_[1] << "," << object_xyz_[2];
+            ss << double((int)(object_xyz_[0]*1000+0.5f)/1000.0) 
+                << "," 
+                << double((int)(object_xyz_[1]*1000+0.5f)/1000.0)
+                << "," 
+                << double((int)(object_xyz_[2]*1000+0.5f)/1000.0);
             cv::putText(image_pg, ss.str(), cv::Point(x_-60-27,y_+435), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 0), 1, 8);
 
 
@@ -831,7 +843,6 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
             count++;
             
         }
-
 
         // 连接节点间的关系
         for(auto iter = support_relationships.begin();iter != support_relationships.end(); iter++)
@@ -875,10 +886,6 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
             
         // }
 
-        
-        
-        
-
         // 发布pg图
         pg_graph = image_pg;
         sensor_msgs::ImagePtr pg_msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", image_pg).toImageMsg();
@@ -891,10 +898,20 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
     pub_pic.publish(msg);
 
     // visualization_msgs::MarkerArray markerarray;
+    Parse_Node::PublishMarker(object_V);
+    
+    
+    // marker_pub.publish(markerarray);
 
+}
+
+void Parse_Node::PublishMarker(std::map<string,Vector3d> object_V)
+{
     // 发布object的scale
     std::stringstream sss;
     int count_marker=0;
+    // Set our initial shape type to be a cube
+    uint32_t shape = visualization_msgs::Marker::CUBE;
     // cout << object_V.size() << endl;
     for(auto iter = object_V.begin();iter != object_V.end(); iter++)
     {
@@ -923,7 +940,7 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
 
         // Set the pose of the marker.  This is a full 6DOF pose relative to the frame/time specified in the header
 
-        if(iter->first == "cup" || iter->first == "mouse")
+        if(On_box.count(iter->first))
         {
             marker.pose.position.x = marker_pose[0];
             marker.pose.position.y = marker_pose[1];
@@ -951,7 +968,7 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
         marker.color.r = 0.5f;//1.0f;
         marker.color.g = 0.5f;//1.0f;
         marker.color.b = 0.5f;//1.0f;
-        marker.color.a = 0.5f;//1.0;
+        marker.color.a = 0.7f;//1.0;
 
         marker.lifetime = ros::Duration();
 
@@ -959,352 +976,32 @@ void PARSE::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
         marker_pub.publish(marker);
         count_marker++;
     }
-    
-    // marker_pub.publish(markerarray);
-
 }
 
-
-void PARSE::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray& msg)
+void Parse_Node::CameraInfo(const sensor_msgs::CameraInfo& camera_info)
 {
-    int t=0;
-    int sum=0;
-    // tf::TransformListener listener;
+    image_geometry::PinholeCameraModel camera_model;
+    camera_model.fromCameraInfo(camera_info);
+      // Get camera intrinsic properties for rectified image.
+    fx = camera_model.fx(); // focal length in camera x-direction [px]
+    fy = camera_model.fy(); // focal length in camera y-direction [px]
+    cx = camera_model.cx(); // optical center x-coordinate [px]
+    cy = camera_model.cy(); // optical center y-coordinate [px]
 
-    std::stringstream ss;
-
-    object_2d_ar_pose.clear();
-    for(const apriltag_ros::AprilTagDetection& ar_marker : msg.detections)
-    {
-        ss.str("");
-        ss << "tag_"<< ar_marker.id[0];
-
-        Eigen::Vector3d trans_object;
-        Eigen::Quaterniond quat_object;
-
-        tf::StampedTransform transform;
-        try
-        {
-            listener.lookupTransform("/map", ss.str(),ros::Time(0), transform);
-        }
-        catch(tf::TransformException e)
-        {
-            ROS_WARN("Failed to compute ar pose, skipping scan (%s)", e.what());
-            ros::Duration(1.0).sleep();
-            return ;
-        }
-        trans_object << transform.getOrigin().x(),transform.getOrigin().y(),transform.getOrigin().z();
-
-        quat_object.w() = transform.getRotation().getW();
-        quat_object.x() = transform.getRotation().getX();
-        quat_object.y() = transform.getRotation().getY();
-        quat_object.z() = transform.getRotation().getZ();
-
-        string name;
-        Vector9d S_support_object;
-        Vector3d S_on_object;
-
-        // ROS_INFO("%d",  ar_marker.id[0]);
-
-        // std::cout << "trans_object:" << ar_marker.id[0] << std::endl << trans_object << std::endl;
-        // cout << "quat_object : " << quat_object.toRotationMatrix() << endl;
-
-        T_base_to_apri = Eigen::Isometry3d::Identity();
-        T_base_to_apri.rotate(quat_object.toRotationMatrix());
-        T_base_to_apri.pretranslate(trans_object);
-        // cout << "quat_object : " << T_base_to_apri.matrix() << endl;
-
-        string ar_pose_name;
-        switch(ar_marker.id[0])
-        {
-            case 0 :
-                ar_pose_name = "TV";
-                break;
-            case 1 :
-                ar_pose_name = "desk";
-                break;
-            case 2 :
-                ar_pose_name = "computer";
-                break;
-            case 3 :
-                ar_pose_name = "chair";
-                break;
-            case 4 :
-                ar_pose_name = "air_conditioner";
-                break;
-        }
-
-
-        // if(object_2d_ar_pose.count(ar_pose_name) == 0)
-        object_2d_ar_pose.insert(std::map<string,Vector2d>::value_type(ar_pose_name,Vector2d(ar_marker.tdposex[0],ar_marker.tdposey[0])));
-
-        Vector3d marker_scale;
-
-        // TV
-        if(ar_marker.id[0] == 0 && TV == false)
-        {
-            TV = true;
-            name = "TV";
-
-            Eigen::Vector3d trans(trans_object[0],trans_object[1],trans_object[2]);    
-
-            S_on_object << trans(0),trans(1),trans_object[2];     
-            
-            marker_scale << 0.5,0.3,0.1;
-
-            on_flag = true;
-        }
-        // desk support function && desk == false
-        else if(ar_marker.id[0] == 1 )
-        {
-            desk = true;
-            name = "desk";
-
-            Eigen::Vector3d t2(1,0,0);
-            Eigen::Vector3d t3(0,-2,0);
-            Eigen::Vector3d t4(1,-2,0);
-
-            Eigen::Vector3d trans1(trans_object[0],trans_object[1],trans_object[2]);    
-
-            Eigen::Vector3d trans2 = T_base_to_apri * t2; 
-
-            Eigen::Vector3d trans3 = T_base_to_apri * t3;
-
-            Eigen::Vector3d trans4 = T_base_to_apri * t4;
-
-            geometry_msgs::PoseStamped pose2;
-            pose2.pose.position.x = trans2[0];
-            pose2.pose.position.y = trans2[1];
-            pose2.pose.position.z = trans2[2];
-            pose2.pose.orientation.x = 0;
-            pose2.pose.orientation.y = 0;
-            pose2.pose.orientation.z = 0;
-            pose2.pose.orientation.w = 1;
-            pose2.header = msg.header;
-            tf::Stamped<tf::Transform> desk2_transform;
-            tf::poseStampedMsgToTF(pose2, desk2_transform);
-            tf_pub_.sendTransform(tf::StampedTransform(desk2_transform,
-                                                        desk2_transform.stamp_,
-                                                        "/map",
-                                                        "/desk_2"));
-
-            geometry_msgs::PoseStamped pose3;
-            pose3.pose.position.x = trans3[0];
-            pose3.pose.position.y = trans3[1];
-            pose3.pose.position.z = trans3[2];
-            pose3.pose.orientation.x = 0;
-            pose3.pose.orientation.y = 0;
-            pose3.pose.orientation.z = 0;
-            pose3.pose.orientation.w = 1;
-            pose3.header = msg.header;
-            tf::Stamped<tf::Transform> desk3_transform;
-            tf::poseStampedMsgToTF(pose3, desk3_transform);
-            tf_pub_.sendTransform(tf::StampedTransform(desk3_transform,
-                                                        desk3_transform.stamp_,
-                                                        "/map",
-                                                        "/desk_3"));
-
-                                                        
-            pose3.pose.position.x = trans4[0];
-            pose3.pose.position.y = trans4[1];
-            pose3.pose.position.z = trans4[2];
-            pose3.pose.orientation.x = 0;
-            pose3.pose.orientation.y = 0;
-            pose3.pose.orientation.z = 0;
-            pose3.pose.orientation.w = 1;
-            pose3.header = msg.header;
-            tf::Stamped<tf::Transform> desk4_transform;
-            tf::poseStampedMsgToTF(pose3, desk4_transform);
-            tf_pub_.sendTransform(tf::StampedTransform(desk4_transform,
-                                                        desk4_transform.stamp_,
-                                                        "/map",
-                                                        "/desk_4"));
-
-            S_support_object << trans1(0),trans1(1),
-                        trans2(0),trans2(1),
-                        trans3(0),trans3(1),
-                        trans4(0),trans4(1),
-                        trans_object[2];
-
-            marker_scale << 1,2,1;
-            
-            support_flag = true;
-            // cout << "T_base_to_apri :" << T_base_to_apri.matrix() << endl;
-            // cout << "desk : " << S_support_object << endl;
-        }
-        // computer support_function
-        else if(ar_marker.id[0] == 2 && computer == false)
-        {
-            computer = true;
-            name = "computer";
-
-            Eigen::Vector3d t2(0.1,0,0);
-            Eigen::Vector3d t3(0,-0.3,0);
-            Eigen::Vector3d t4(0.1,-0.3,0);
-
-            Eigen::Vector3d trans1(trans_object[0],trans_object[1],trans_object[2]);    
-
-            Eigen::Vector3d trans2 = T_base_to_apri * t2; 
-
-            Eigen::Vector3d trans3 = T_base_to_apri * t3;
-
-            Eigen::Vector3d trans4 = T_base_to_apri * t4;
-
-            S_support_object << trans1(0),trans1(1),
-                        trans2(0),trans2(1),
-                        trans3(0),trans3(1),
-                        trans4(0),trans4(1),
-                        trans_object[2];
-
-            marker_scale << 0.1,0.3,0.3;
-            
-            support_flag = true;
-            
-        }
-        // chair support_function
-        else if(ar_marker.id[0] == 3 && chair == false)
-        {
-            chair = true;
-            name = "chair";
-
-            Eigen::Vector3d t2(0.2,0,0);
-            Eigen::Vector3d t3(0,-0.2,0);
-            Eigen::Vector3d t4(0.2,-0.2,0);
-
-            Eigen::Vector3d trans1(trans_object[0],trans_object[1],trans_object[2]);    
-
-            Eigen::Vector3d trans2 = T_base_to_apri * t2; 
-
-            Eigen::Vector3d trans3 = T_base_to_apri * t3;
-
-            Eigen::Vector3d trans4 = T_base_to_apri * t4;
-
-            S_support_object << trans1(0),trans1(1),
-                        trans2(0),trans2(1),
-                        trans3(0),trans3(1),
-                        trans4(0),trans4(1),
-                        trans_object[2];
-
-            marker_scale << 0.2,0.2,-0.5;
-            
-            support_flag = true;            
-
-            // cout << "chair : " << S_object << endl; 
-        }
-        // air_conditioner
-        else if(ar_marker.id[0] == 4 && air_conditioner == false)
-        {
-            air_conditioner = true;
-            name = "air_conditioner";
-
-            Eigen::Vector3d trans(trans_object[0],trans_object[1],trans_object[2]);    
-
-            S_on_object << trans(0),trans(1),trans_object[2];
-
-            marker_scale << 0.1,1,0.1;
-            
-            on_flag = true;
-            
-        }
-        else if(ar_marker.id[0] == 5 && desk1 == false)
-        {
-            desk1 = true;
-            name = "desk1";
-
-            Eigen::Vector3d t2(0,0,0.5);
-            Eigen::Vector3d trans = T_base_to_apri * t2;    
-
-            S_on_object << trans(0),trans(1),trans_object[2];
-            // cout << "S_on_object" << S_on_object << endl;
-            // cout << "trans" << trans << endl;
-            marker_scale << 0.1,0.3,0.3;
-            
-            on_flag = true;
-        }
-        else if(ar_marker.id[0] == 6 && desk2 == false)
-        {
-            desk2 = true;
-            name = "desk2";
-
-            Eigen::Vector3d t2(0,0,0.5);
-            Eigen::Vector3d trans = T_base_to_apri * t2;    
-
-            S_on_object << trans(0),trans(1),trans_object[2];
-            marker_scale << 0.1,0.3,0.3;
-
-            on_flag = true;
-        }
-        else if(ar_marker.id[0] == 7 && desk3 == false)
-        {
-            desk1 = true;
-            name = "desk3";
-
-            Eigen::Vector3d t2(0,0,0.5);
-            Eigen::Vector3d trans = T_base_to_apri * t2;    
-
-            S_on_object << trans(0),trans(1),trans_object[2];
-            marker_scale << 0.1,0.3,0.3;
-
-            on_flag = true;
-        }
-        
-        else 
-        {
-            continue;
-        }
-
-        if(support_flag == true)
-        {
-
-            support_flag = false;
-            Support_box.insert(std::map<string,Vector9d>::value_type(name,S_support_object));
-
-            S_support_object[0] = double((int)(S_support_object[0]*1000+0.5f)/1000.0);
-            S_support_object[1] = double((int)(S_support_object[1]*1000+0.5f)/1000.0);
-            S_support_object[8] = double((int)(S_support_object[8]*1000+0.5f)/1000.0);
-
-            object_xyz.insert(std::map<string,Vector3d>::value_type(name,Vector3d(S_support_object[0],S_support_object[1],S_support_object[8])));
-            object_V.insert(std::map<string,Vector3d>::value_type(name,marker_scale));
-            
-        }
-        else if(on_flag == true)
-        {
-            on_flag = false;
-
-            On_box.insert(std::map<string,Vector3d>::value_type(name,S_on_object));
-            S_on_object[0] = double((int)(S_on_object[0]*1000+0.5f)/1000.0);
-            S_on_object[1] = double((int)(S_on_object[1]*1000+0.5f)/1000.0);
-            S_on_object[2] = double((int)(S_on_object[2]*1000+0.5f)/1000.0);
-
-            object_xyz.insert(std::map<string,Vector3d>::value_type(name,S_on_object));
-            object_V.insert(std::map<string,Vector3d>::value_type(name,marker_scale));
-            
-        }
- 
-        
-    }
-   
-    //ROS_INFO("%d", t);
-    
 }
 
-void PARSE::orb_pose(const geometry_msgs::PoseStamped& pose_msg)
+
+void Parse_Node::depth_Callback(const sensor_msgs::ImageConstPtr& depth_msg)
 {
-    // T_base_to_camera = Eigen::Isometry3d::Identity();
+  try
+  {
+    depth_ptr = cv_bridge::toCvCopy(depth_msg, sensor_msgs::image_encodings::TYPE_32FC1); 
 
-    Eigen::Vector3d trans;
-    trans[0] = pose_msg.pose.position.x;
-    trans[1] = pose_msg.pose.position.y;
-    trans[2] = pose_msg.pose.position.z;
+  }
+  catch (cv_bridge::Exception& e)
+  {
+    ROS_ERROR("Could not convert from '%s' to 'mono16'.", depth_msg->encoding.c_str());
+  }
 
-    Eigen::Quaterniond quat;
-    quat.x() = pose_msg.pose.orientation.x; 
-    quat.y() = pose_msg.pose.orientation.y; 
-    quat.z() = pose_msg.pose.orientation.z; 
-    quat.w() = pose_msg.pose.orientation.w; 
-
-    // T_base_to_camera.rotate ( quat );
-    // T_base_to_camera.pretranslate ( trans );
-    // std::cout << "T_base_to_camera:" << std::endl << T_base_to_camera.matrix() << std::endl;
+  depth_pic = depth_ptr->image;
 }
-
