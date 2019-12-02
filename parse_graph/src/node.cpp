@@ -236,47 +236,102 @@ void Parse_Node::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
     T_base_to_camera.rotate ( quat_Bbox );
     T_base_to_camera.pretranslate ( trans_Bbox );
     
-    std::map<string,Vector4d> id_object_p_only;
 
+    // compute the MAP of object
+    id_object_p_only.clear();
     Map_Compute::Compute_Object_Map(office_object,Bound_msg,id_object_p_only);
 
     // cout << "id_object_p_only size : " << id_object_p_only.size() << endl;
 
     std::stringstream sss;
     object_2d_pose.clear();
-    for(const darknet_ros_msgs::BoundingBox& Bbox : Bound_msg.bounding_boxes)
+    for(int i=0;i<id_object_p_only.size();i++)
     {
-        sss.str("");
-        sss << Bbox.Class << '_' << Bbox.id;
+        string ob_name;
+        float ob_sum_p;
+        Vector4d Bbox;
+        std::tie(ob_name,Bbox,ob_sum_p)=id_object_p_only[i];
+        // cout << ob_name << " : " << ob_sum_p << endl;
 
-        string name_darknet = sss.str();
-        Vector3d S_darknet_object;
-
-        Vector2d mean_point((Bbox.xmin+Bbox.xmax)/2,(Bbox.ymin+Bbox.ymax)/2);        
+        Vector2d mean_point((Bbox[0]+Bbox[1])/2,(Bbox[2]+Bbox[3])/2);        
         double mean_depth = depth_pic.ptr<float>(int(mean_point[1]))[int(mean_point[0])]/1000.0;
-        
+        // 不知咋搞的有时候会返回0，导致坐标跑到相机上
+        if(mean_depth == 0) continue;
+        // cout << "Bbox : " << Bbox.matrix() << endl;
+        // cout << "mean_depth : " << mean_depth << endl;
+
         double x = (mean_point[0] - cy) * mean_depth / fy;
         double y = (mean_point[1] - cx) * mean_depth / fx;
 
-        double x1 = (Bbox.ymin - cy) * mean_depth / fy;
-        double y1 = (Bbox.xmin - cx) * mean_depth / fx;
+        double x1 = (Bbox[2] - cy) * mean_depth / fy;
+        double y1 = (Bbox[0] - cx) * mean_depth / fx;
 
-        double x2 = (Bbox.ymax - cy) * mean_depth / fy;
-        double y2 = (Bbox.xmax - cx) * mean_depth / fx;
+        double x2 = (Bbox[3] - cy) * mean_depth / fy;
+        double y2 = (Bbox[1] - cx) * mean_depth / fx;
 
         Vector3d point(x,y,mean_depth);
 
+        Vector3d S_darknet_object;
         S_darknet_object = T_base_to_camera * point;
 
-        if(Bbox.Class == "cup" || Bbox.Class == "mouse")
+        // cout << "point : " << point.matrix() << endl;
+        // cout << "T_base_to_camera :" << endl << T_base_to_camera.matrix() << endl;
+
+        string name_darknet;
+        bool Same_flag=false;
+        if(ob_name == "cup" || ob_name == "mouse")
         {
+            // 之前无此class，则创建class类别，添加id 0
+            if(class_id.count(ob_name) == 0)
+            {
+                sss.str("");
+                sss << ob_name << '_' << 0;
+                name_darknet = sss.str();
+                cout << "first : " << name_darknet << " : " << ob_sum_p << endl;
+                std::vector<string> class_id_first;
+                class_id_first.push_back(name_darknet);
+                class_id.insert(std::map<string,std::vector<string>>::value_type(ob_name,class_id_first));
+            }
+            // 再有相同class的object时，首先判断是否为之前的id，若不是则push新id
+            else if(class_id.count(ob_name) > 0)
+            {
+                for(int k=0;k<class_id[ob_name].size();k++)
+                {
+                    // 判断三维坐标是否一致(之间距离是否大于最大边长)
+                    string other_class_name = class_id[ob_name][k];
+                    float a=object_V[other_class_name][0];
+                    float b=object_V[other_class_name][1];
+                    float c=object_V[other_class_name][2];
+                    float max_distance = (a>=b&&a>=c)?a:(b>=a&&b>=c)?b:c;
+                    if(abs(S_darknet_object[0]-object_xyz[other_class_name][0])<max_distance &&
+                        abs(S_darknet_object[1]-object_xyz[other_class_name][1])<max_distance &&
+                        abs(S_darknet_object[2]-object_xyz[other_class_name][2])<max_distance )
+                    {
+                        name_darknet = other_class_name;                   
+                        Same_flag=true;
+                        break;
+                    }
+                }
+
+                if(!Same_flag)
+                {
+                    sss.str("");
+                    sss << ob_name << '_' << class_id[ob_name].size();
+                    name_darknet = sss.str();
+                    class_id[ob_name].push_back(name_darknet);
+                    cout << "second : " << name_darknet << " : " << ob_sum_p << endl;
+                    
+                }
+                
+            }
+
             // publish the tf of cmaera and darktag
             Parse_Node::Publishtf(point,"camera",name_darknet);
 
-            Vector2d d_pose((Bbox.xmin+Bbox.xmax)/2,(Bbox.ymin+Bbox.ymax)/2);
+            Vector2d d_pose((Bbox[0]+Bbox[1])/2,(Bbox[2]+Bbox[3])/2);
 
-            if(object_2d_pose.count(Bbox.Class) == 0)
-                object_2d_pose.insert(std::map<string,Vector2d>::value_type(Bbox.Class,d_pose));
+            if(object_2d_pose.count(name_darknet) == 0)
+                object_2d_pose.insert(std::map<string,Vector2d>::value_type(name_darknet,d_pose));
 
             // the scale of boundingbox    
             Vector3d marker_scale;
@@ -284,19 +339,24 @@ void Parse_Node::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
                             (max(abs(x2-x1),abs(y2-y1))>0?max(abs(x2-x1),abs(y2-y1)):0.01),
                             (abs(y2-y1)>0?abs(y2-y1):0.01);
 
-            if(On_box.count(Bbox.Class)>0)
-            {
-                On_box[Bbox.Class]=S_darknet_object;
-                object_xyz[Bbox.Class]=S_darknet_object;
-                object_V[Bbox.Class]=marker_scale;
-                continue;
+            if(On_box.count(name_darknet) == 0)
+            {           
+                On_box.insert(std::map<string,Vector3d>::value_type(name_darknet,S_darknet_object));
+                object_xyz.insert(std::map<string,Vector3d>::value_type(name_darknet,S_darknet_object));
+                object_V.insert(std::map<string,Vector3d>::value_type(name_darknet,marker_scale));      
+                object_P.insert(std::map<string,float>::value_type(name_darknet,ob_sum_p));       
+            }
+            else if(On_box.count(name_darknet) > 0)
+            {    
+
+                On_box[name_darknet]=S_darknet_object;
+                object_xyz[name_darknet]=S_darknet_object;              
+                object_V[name_darknet]=marker_scale;
+                object_P[name_darknet]=ob_sum_p;                       
             }
 
             // cout << "name : " << name_darknet << endl;
             // cout << "size of On_box : " << On_box.size() << endl;
-            On_box.insert(std::map<string,Vector3d>::value_type(Bbox.Class,S_darknet_object));
-            object_xyz.insert(std::map<string,Vector3d>::value_type(Bbox.Class,S_darknet_object));
-            object_V.insert(std::map<string,Vector3d>::value_type(Bbox.Class,marker_scale));
 
         }
 
@@ -607,7 +667,7 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
         string Ob_name,Sub_name,Relation;
         float Relation_P;
         std::tie(Ob_name,Sub_name,Relation,Relation_P) = rela_after_map[i];
-        cout << Ob_name << " , " << Sub_name << " " << Relation << " is " << Relation_P << endl;
+        // cout << Ob_name << " , " << Sub_name << " " << Relation << " is " << Relation_P << endl;
         
         if(object_2d_ar_pose.count(Sub_name)>0)
         {
@@ -689,8 +749,14 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
         string pose_name = iter->first;
         Vector2d pose_d = iter->second;
 
+        std::stringstream ssss; 
+        float pp=0;
+        if(object_P.count(pose_name))
+            pp = object_P[pose_name];
+        ssss << pose_name << ":" << pp ;
+
         cv::circle(image,cv::Point(pose_d[0],pose_d[1]),10,cv::Scalar(0, 255, 0),4,8);
-        cv::putText(image, pose_name, cv::Point(pose_d[0]+15,pose_d[1]), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2, 8);
+        cv::putText(image, ssss.str(), cv::Point(pose_d[0]+15,pose_d[1]), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2, 8);
 
         BOOST_FOREACH (boost::property_tree::ptree::value_type &vtt, knowledgegraph_object)
         {

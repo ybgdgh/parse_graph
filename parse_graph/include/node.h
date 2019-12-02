@@ -125,6 +125,10 @@ class Parse_Node
     // record the V of the object
     std::map<string,Vector3d> object_V;
 
+    // record the probability of the object
+    std::map<string,float> object_P;
+    
+
     // record the relationships of object
     std::map<string,string> support_relationships;
     std::map<string,string> contian_relationships;
@@ -138,6 +142,11 @@ class Parse_Node
     boost::property_tree::ptree knowledgegraph ;
     boost::property_tree::ptree knowledgegraph_object ;
 
+    std::vector<std::tuple<string,Vector4d,float>> id_object_p_only;
+
+    // save the id for every class . calss1,2,3...
+    std::map<string,std::vector<string>> class_id;
+    
 
  
     tf::TransformListener listener;
