@@ -43,6 +43,10 @@ Parse_Node::Parse_Node(ros::NodeHandle nh,ros::NodeHandle np)
     knowledgegraph = Parse_Node::loadPoseFile("/home/dm/knowledgegraph.json");
     knowledgegraph_object = knowledgegraph.get_child("object");
 
+    //inite the Flag of active is full!
+    KFG_Active_Finish = false;
+    KFG_Number = 50;
+
     std::cout << "init finish" << std::endl;
    
 }
@@ -245,8 +249,14 @@ void Parse_Node::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
 
     std::stringstream sss;
     object_2d_pose.clear();
+    object_P.clear();
+    // keyframe group in one image
+    std::vector<std::tuple<string,Vector3d,Vector3d>> KFG_active_oneimage;
     for(int i=0;i<id_object_p_only.size();i++)
     {
+        // keyframe group in one object
+        std::tuple<string,Vector3d,Vector3d> KFG_active_oneobject;
+
         string ob_name;
         float ob_sum_p;
         Vector4d Bbox;
@@ -299,13 +309,13 @@ void Parse_Node::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
                 {
                     // 判断三维坐标是否一致(之间距离是否大于最大边长)
                     string other_class_name = class_id[ob_name][k];
-                    float a=object_V[other_class_name][0];
-                    float b=object_V[other_class_name][1];
-                    float c=object_V[other_class_name][2];
+                    float a=object_V_local[other_class_name][0];
+                    float b=object_V_local[other_class_name][1];
+                    float c=object_V_local[other_class_name][2];
                     float max_distance = (a>=b&&a>=c)?a:(b>=a&&b>=c)?b:c;
-                    if(abs(S_darknet_object[0]-object_xyz[other_class_name][0])<max_distance &&
-                        abs(S_darknet_object[1]-object_xyz[other_class_name][1])<max_distance &&
-                        abs(S_darknet_object[2]-object_xyz[other_class_name][2])<max_distance )
+                    if(abs(S_darknet_object[0]-object_xyz_local[other_class_name][0])<max_distance &&
+                        abs(S_darknet_object[1]-object_xyz_local[other_class_name][1])<max_distance &&
+                        abs(S_darknet_object[2]-object_xyz_local[other_class_name][2])<max_distance )
                     {
                         name_darknet = other_class_name;                   
                         Same_flag=true;
@@ -339,29 +349,43 @@ void Parse_Node::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
                             (max(abs(x2-x1),abs(y2-y1))>0?max(abs(x2-x1),abs(y2-y1)):0.01),
                             (abs(y2-y1)>0?abs(y2-y1):0.01);
 
-            if(On_box.count(name_darknet) == 0)
+            if(On_box_local.count(name_darknet) == 0)
             {           
-                On_box.insert(std::map<string,Vector3d>::value_type(name_darknet,S_darknet_object));
-                object_xyz.insert(std::map<string,Vector3d>::value_type(name_darknet,S_darknet_object));
-                object_V.insert(std::map<string,Vector3d>::value_type(name_darknet,marker_scale));      
+                On_box_local.insert(std::map<string,Vector3d>::value_type(name_darknet,S_darknet_object));
+                object_xyz_local.insert(std::map<string,Vector3d>::value_type(name_darknet,S_darknet_object));
+                object_V_local.insert(std::map<string,Vector3d>::value_type(name_darknet,marker_scale));       
                 object_P.insert(std::map<string,float>::value_type(name_darknet,ob_sum_p));       
             }
-            else if(On_box.count(name_darknet) > 0)
+            else if(On_box_local.count(name_darknet) > 0)
             {    
 
-                On_box[name_darknet]=S_darknet_object;
-                object_xyz[name_darknet]=S_darknet_object;              
-                object_V[name_darknet]=marker_scale;
+                On_box_local[name_darknet]=S_darknet_object;
+                object_xyz_local[name_darknet]=S_darknet_object;
+                object_V_local[name_darknet]=marker_scale;
                 object_P[name_darknet]=ob_sum_p;                       
             }
 
             // cout << "name : " << name_darknet << endl;
             // cout << "size of On_box : " << On_box.size() << endl;
 
+            KFG_active_oneobject=make_tuple(name_darknet,S_darknet_object,marker_scale);
+            KFG_active_oneimage.push_back(KFG_active_oneobject);
+            
         }
 
        
   
+    }
+    KFG_active.push_back(KFG_active_oneimage);
+
+    // transform active to optimize
+    if(KFG_active.size() >= 50)
+    {
+        KFG_Active_Finish = true;
+        // clear KFG_optimize and insert KFG_active
+        KFG_optimize.assign(KFG_active.begin(),KFG_active.end());
+        // clear KFG_active and insert the after half of KFG_optimize
+        KFG_active.assign(KFG_optimize.begin()+KFG_Number/2,KFG_optimize.end());
     }
 }
 
@@ -659,86 +683,7 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
     cv::Mat image = cv_ptr->image;
 
 
-    // compute map relationships
-    std::vector<std::tuple<string,string,string,float>> rela_after_map;
-    Map_Compute::Compute_Relationships_Map(office_relationships,Support_box,On_box,object_V,rela_after_map);
-    for(int i=0;i<rela_after_map.size();i++)
-    {
-        string Ob_name,Sub_name,Relation;
-        float Relation_P;
-        std::tie(Ob_name,Sub_name,Relation,Relation_P) = rela_after_map[i];
-        // cout << Ob_name << " , " << Sub_name << " " << Relation << " is " << Relation_P << endl;
-        
-        if(object_2d_ar_pose.count(Sub_name)>0)
-        {
-            if(Relation == "ON")
-            {
-                std::stringstream sss;
-                sss << "on:" << Relation_P << endl;
-                // 连接两端的箭头线，有的可能存在ar里有的不是，因为实时清空所以实时显示更新
-                if(object_2d_ar_pose.count(Ob_name)>0)
-                {
-                    cv::arrowedLine(image, cv::Point(object_2d_ar_pose[Sub_name][0], object_2d_ar_pose[Sub_name][1]),
-                    cv::Point(object_2d_ar_pose[Ob_name][0], object_2d_ar_pose[Ob_name][1]), cv::Scalar(0, 255, 0), 2, 4,0,0.1);
-
-                    cv::putText(image, sss.str(), cv::Point((object_2d_ar_pose[Sub_name][0]+object_2d_ar_pose[Ob_name][0])/2,
-                    (object_2d_ar_pose[Sub_name][1]+object_2d_ar_pose[Ob_name][1])/2+20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 2, 8);
-
-                }
-                else if(object_2d_pose.count(Ob_name)>0)
-                {
-                    cv::arrowedLine(image, cv::Point(object_2d_ar_pose[Sub_name][0], object_2d_ar_pose[Sub_name][1]),
-                    cv::Point(object_2d_pose[Ob_name][0], object_2d_pose[Ob_name][1]), cv::Scalar(0, 255, 0), 2, 4,0,0.1);
-
-                    cv::putText(image, sss.str(), cv::Point((object_2d_ar_pose[Sub_name][0]+object_2d_pose[Ob_name][0])/2,
-                    (object_2d_ar_pose[Sub_name][1]+object_2d_pose[Ob_name][1])/2+20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 2, 8);
-
-                }
-
-                if(support_relationships.count(Ob_name) == 0)
-                    support_relationships.insert(std::map<string,string>::value_type(Ob_name,Sub_name));
-                else if(support_relationships.count(Ob_name) > 0)
-                    support_relationships[Ob_name]=Sub_name;
-                
-            }
-
-            if(Relation == "IN")
-            {
-                std::stringstream sss;
-                sss << "in:" << Relation_P << endl;
-                // 连接两端的箭头线，有的可能存在ar里有的不是，因为实时清空所以实时显示更新
-                if(object_2d_ar_pose.count(Ob_name)>0)
-                {
-                    cv::arrowedLine(image, cv::Point(object_2d_ar_pose[Sub_name][0], object_2d_ar_pose[Sub_name][1]),
-                    cv::Point(object_2d_ar_pose[Ob_name][0], object_2d_ar_pose[Ob_name][1]), cv::Scalar(0, 0, 255), 2, 4,0,0.1);
-
-                    cv::putText(image, sss.str(), cv::Point((object_2d_ar_pose[Sub_name][0]+object_2d_ar_pose[Ob_name][0])/2,
-                    (object_2d_ar_pose[Sub_name][1]+object_2d_ar_pose[Ob_name][1])/2+20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 0, 0), 2, 8);
-
-                }
-                else if(object_2d_pose.count(Ob_name)>0)
-                {
-                    cv::arrowedLine(image, cv::Point(object_2d_ar_pose[Sub_name][0], object_2d_ar_pose[Sub_name][1]),
-                    cv::Point(object_2d_pose[Ob_name][0], object_2d_pose[Ob_name][1]), cv::Scalar(0, 0, 255), 2, 4,0,0.1);
-
-                    cv::putText(image, sss.str(), cv::Point((object_2d_ar_pose[Sub_name][0]+object_2d_pose[Ob_name][0])/2,
-                    (object_2d_ar_pose[Sub_name][1]+object_2d_pose[Ob_name][1])/2+20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 0, 0), 2, 8);
-
-                }
-
-                if(contian_relationships.count(Ob_name) == 0)
-                    contian_relationships.insert(std::map<string,string>::value_type(Ob_name,Sub_name));
-                else if(contian_relationships.count(Ob_name) > 0)
-                    contian_relationships[Ob_name]=Sub_name;
-            }
-        }
-        
-                   
-    }
-    
-
-
-   
+    // 节点注释
     // 画圈、写字
     int add=15;
     int r=0,g=255,b=255;
@@ -844,120 +789,323 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
         
     }
 
+
+    
+    // compute local map relationships
+    std::vector<std::tuple<string,string,string,float>> Local_rela_after_map;
+    Map_Compute::Compute_Local_Relationships_Map(
+        office_relationships,
+        Support_box,
+        On_box_local,
+        object_2d_ar_pose,
+        object_2d_pose,
+        object_V_local,
+        Local_rela_after_map);
+
+
+    for(int i=0;i<Local_rela_after_map.size();i++)
+    {
+        string Ob_name,Sub_name,Relation;
+        float Relation_P;
+        std::tie(Ob_name,Sub_name,Relation,Relation_P) = Local_rela_after_map[i];
+        // cout << Ob_name << " , " << Sub_name << " " << Relation << " is " << Relation_P << endl;
+
+        if(Relation == "ON")
+        {
+            if(object_2d_ar_pose.count(Sub_name)>0)
+            {
+                std::stringstream sss;
+                sss << "on:" << Relation_P << endl;
+                // 连接两端的箭头线，有的可能存在ar里有的不是，因为实时清空所以实时显示更新
+                if(object_2d_ar_pose.count(Ob_name)>0)
+                {
+                    cv::arrowedLine(image, cv::Point(object_2d_ar_pose[Sub_name][0], object_2d_ar_pose[Sub_name][1]),
+                    cv::Point(object_2d_ar_pose[Ob_name][0], object_2d_ar_pose[Ob_name][1]), cv::Scalar(0, 255, 0), 2, 4,0,0.1);
+
+                    cv::putText(image, sss.str(), cv::Point((object_2d_ar_pose[Sub_name][0]+object_2d_ar_pose[Ob_name][0])/2,
+                    (object_2d_ar_pose[Sub_name][1]+object_2d_ar_pose[Ob_name][1])/2+20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 2, 8);
+
+                }
+                else if(object_2d_pose.count(Ob_name)>0)
+                {
+                    cv::arrowedLine(image, cv::Point(object_2d_ar_pose[Sub_name][0], object_2d_ar_pose[Sub_name][1]),
+                    cv::Point(object_2d_pose[Ob_name][0], object_2d_pose[Ob_name][1]), cv::Scalar(0, 255, 0), 2, 4,0,0.1);
+
+                    cv::putText(image, sss.str(), cv::Point((object_2d_ar_pose[Sub_name][0]+object_2d_pose[Ob_name][0])/2,
+                    (object_2d_ar_pose[Sub_name][1]+object_2d_pose[Ob_name][1])/2+20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 2, 8);
+
+                }
+            }
+            
+        }
+
+        if(Relation == "IN")
+        {
+            if(object_2d_ar_pose.count(Sub_name)>0)
+            {
+                std::stringstream sss;
+                sss << "in:" << Relation_P << endl;
+                // 连接两端的箭头线，有的可能存在ar里有的不是，因为实时清空所以实时显示更新
+                if(object_2d_ar_pose.count(Ob_name)>0)
+                {
+                    cv::arrowedLine(image, cv::Point(object_2d_ar_pose[Sub_name][0], object_2d_ar_pose[Sub_name][1]),
+                    cv::Point(object_2d_ar_pose[Ob_name][0], object_2d_ar_pose[Ob_name][1]), cv::Scalar(0, 0, 255), 2, 4,0,0.1);
+
+                    cv::putText(image, sss.str(), cv::Point((object_2d_ar_pose[Sub_name][0]+object_2d_ar_pose[Ob_name][0])/2,
+                    (object_2d_ar_pose[Sub_name][1]+object_2d_ar_pose[Ob_name][1])/2+20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 0, 0), 2, 8);
+
+                }
+                else if(object_2d_pose.count(Ob_name)>0)
+                {
+                    cv::arrowedLine(image, cv::Point(object_2d_ar_pose[Sub_name][0], object_2d_ar_pose[Sub_name][1]),
+                    cv::Point(object_2d_pose[Ob_name][0], object_2d_pose[Ob_name][1]), cv::Scalar(0, 0, 255), 2, 4,0,0.1);
+
+                    cv::putText(image, sss.str(), cv::Point((object_2d_ar_pose[Sub_name][0]+object_2d_pose[Ob_name][0])/2,
+                    (object_2d_ar_pose[Sub_name][1]+object_2d_pose[Ob_name][1])/2+20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 0, 0), 2, 8);
+
+                }
+            }
+ 
+        }
+        
+        
+                
+    }
+
+
     pg_image_show = image;
 
 
-    int rows = 600;
-    int cols = 200+(Support_box.size() + On_box.size())*200;
-    int x_ = cols/2;
-    int y_ = 50;
-    int count = 0;
-    std::stringstream ss;
-    std::map<string,Vector2d> object_pg_pose;
-    if(cols > 0)
+
+    // 关系注释
+    // 50times
+    if(KFG_Active_Finish)
     {
-        cv::Mat image_pg(rows, cols, CV_8UC3, Scalar(255,255,255));
-
-        string pg_name = knowledgegraph.get<string>("name");
-        
-        Draw_PG::draw_node(image_pg,cols/2,y_,"pg_name");
-
-        for(auto iter = object_xyz.begin();iter != object_xyz.end(); iter++)
+        KFG_Active_Finish=false;
+        // the sum of xyz V 将同一类的xyz和V放到同一容器
+        std::map<string,std::vector<std::tuple<Vector3d,Vector3d>>> KFG_sum;
+        for(int i=0;i<KFG_optimize.size();i++)
         {
-            string object_name = iter->first;
-            Vector3d object_xyz_ = iter->second;
-            x_ = x_ + count*180*pow(-1,count);
-            Draw_PG::draw_node(image_pg,x_,y_+150,object_name);
-            Draw_PG::draw_arrow(image_pg,cols/2,y_,x_,y_+150);
+            for(int j=0;j<KFG_optimize[i].size();j++)
+            {
+                string KFG_name ;
+                Vector3d KFG_xyz;
+                Vector3d KFG_V;
+                std::tie(KFG_name,KFG_xyz,KFG_V) = KFG_optimize[i][j];
 
-            // 属性节点
-            cv::Rect rect(x_-10-30, y_+300, 20,20);//左上坐标（x,y）和矩形的长(x)宽(y)
-            cv::rectangle(image_pg, rect, cv::Scalar(0, 160, 255),-1, cv::LINE_8,0);//绘制填充矩形
-            Draw_PG::draw_attribute_arrow(image_pg,x_,y_+150+15,x_-30, y_+300);
+                if(KFG_sum.count(KFG_name) == 0)
+                {
+                    std::vector<std::tuple<Vector3d,Vector3d>> xyz_V ;
+                    xyz_V.push_back(make_tuple(KFG_xyz,KFG_V)) ;
+                    KFG_sum.insert(make_pair(KFG_name,xyz_V));
 
-            // 地址节点
-            Draw_PG::draw_triangle(image_pg, x_+30, y_+300);
-            Draw_PG::draw_attribute_arrow(image_pg,x_,y_+150+15,x_+30, y_+300);
-            object_pg_pose.insert(std::map<string,Vector2d>::value_type(object_name,Vector2d(x_+30,y_+300+20)));
-            
+                }
+                else 
+                    KFG_sum[KFG_name].push_back(make_tuple(KFG_xyz,KFG_V));
 
-            // xyz
-            cv::Rect rect1(x_-60-30, y_+420, 120,20);//左上坐标（x,y）和矩形的长(x)宽(y)
-            cv::rectangle(image_pg, rect1, cv::Scalar(0, 255, 0), 1, cv::LINE_8,0);//绘制矩形
-            Draw_PG::draw_attribute_arrow(image_pg,x_-30, y_+320,x_-30, y_+420);
+            }
+        }
 
-            ss.str("");
-            ss << double((int)(object_xyz_[0]*1000+0.5f)/1000.0) 
-                << "," 
-                << double((int)(object_xyz_[1]*1000+0.5f)/1000.0)
-                << "," 
-                << double((int)(object_xyz_[2]*1000+0.5f)/1000.0);
-            cv::putText(image_pg, ss.str(), cv::Point(x_-60-27,y_+435), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 0), 1, 8);
+        // 遍历每一种classid
+        for(auto iter = KFG_sum.begin();iter != KFG_sum.end(); iter++)
+        {
+            string KDF_name_oneclass = iter->first;
+            std::vector<std::tuple<Vector3d,Vector3d>> KDF_sum_oneclassid = iter->second;
+            if(KDF_sum_oneclassid.size()>25)
+            {
+                // xyz V 求和取均值
+                Vector3d xyz_sum;
+                Vector3d V_sum;
+                for(int i=0;i<KDF_sum_oneclassid.size();i++)
+                {
+                    // xyz_sum[0]=xyz_sum[0]+KDF_xyz_sum_oneclass[i][0];
+                    // xyz_sum[1]=xyz_sum[1]+KDF_xyz_sum_oneclass[i][1];
+                    // xyz_sum[2]=xyz_sum[2]+KDF_xyz_sum_oneclass[i][2];
+                    Vector3d xyz_sum_one,V_sum_one;
 
+                    std::tie(xyz_sum_one,V_sum_one) = KDF_sum_oneclassid[i];
 
-            // BOOST_FOREACH (boost::property_tree::ptree::value_type &vtt, knowledgegraph_object)
-            // {
-            //     boost::property_tree::ptree vt = vtt.second;
-            //     string name_kg = vt.get<string>("name");
-            //     if(object_name == name_kg)
-            //     {
-            //         // Draw_PG::draw_attribute_node(image_pg, int x, int y, std::string node_name)
-            //     }
+                    xyz_sum=xyz_sum+xyz_sum_one;
+                    V_sum=V_sum+V_sum_one;
+                }
+                xyz_sum = xyz_sum/KDF_sum_oneclassid.size();
+                V_sum = V_sum/KDF_sum_oneclassid.size();
+
+                if(On_box.count(KDF_name_oneclass) == 0)
+                {
+                    On_box.insert(std::map<string,Vector3d>::value_type(KDF_name_oneclass,xyz_sum));
+                    object_xyz.insert(std::map<string,Vector3d>::value_type(KDF_name_oneclass,xyz_sum));
+                    object_V.insert(std::map<string,Vector3d>::value_type(KDF_name_oneclass,V_sum));
+                }
+                else
+                {
+                    On_box[KDF_name_oneclass]=xyz_sum;
+                    object_xyz[KDF_name_oneclass]=xyz_sum;
+                    object_V[KDF_name_oneclass]=V_sum;
+                }
+            }
+
+        }
+
+        // update local date
+        On_box_local.clear();
+        On_box_local.insert(On_box.begin(),On_box.end());
+        object_xyz_local.clear();
+        object_xyz_local.insert(object_xyz.begin(),object_xyz.end());
+        object_V_local.clear();
+        object_V_local.insert(object_V.begin(),object_V.end());
+
+    
+        // compute map relationships
+        std::vector<std::tuple<string,string,string,float>> Globe_rela_after_map;
+        Map_Compute::Compute_Globe_Relationships_Map(
+            office_relationships,
+            Support_box,
+            On_box,
+            object_V,
+            Globe_rela_after_map);
      
+        for(int i=0;i<Globe_rela_after_map.size();i++)
+        {
+            string Ob_name,Sub_name,Relation;
+            float Relation_P;
+            std::tie(Ob_name,Sub_name,Relation,Relation_P) = Globe_rela_after_map[i];
+            // cout << Ob_name << " , " << Sub_name << " " << Relation << " is " << Relation_P << endl;
+ 
+            if(Relation == "ON")
+            {
+                if(support_relationships.count(Ob_name) == 0)
+                    support_relationships.insert(std::map<string,string>::value_type(Ob_name,Sub_name));
+                else if(support_relationships.count(Ob_name) > 0)
+                    support_relationships[Ob_name]=Sub_name;
+                
+            }
+
+            if(Relation == "IN")
+            {
+                if(contian_relationships.count(Ob_name) == 0)
+                    contian_relationships.insert(std::map<string,string>::value_type(Ob_name,Sub_name));
+                else if(contian_relationships.count(Ob_name) > 0)
+                    contian_relationships[Ob_name]=Sub_name;
+            }         
+                    
+        }
+
+
+        int rows = 600;
+        int cols = 200+(Support_box.size() + On_box.size())*200;
+        int x_ = cols/2;
+        int y_ = 50;
+        int count = 0;
+        std::stringstream ss;
+        std::map<string,Vector2d> object_pg_pose;
+        if(cols > 0)
+        {
+            cv::Mat image_pg(rows, cols, CV_8UC3, Scalar(255,255,255));
+
+            string pg_name = knowledgegraph.get<string>("name");
+            
+            Draw_PG::draw_node(image_pg,cols/2,y_,"pg_name");
+
+            for(auto iter = object_xyz.begin();iter != object_xyz.end(); iter++)
+            {
+                string object_name = iter->first;
+                Vector3d object_xyz_ = iter->second;
+                x_ = x_ + count*180*pow(-1,count);
+                Draw_PG::draw_node(image_pg,x_,y_+150,object_name);
+                Draw_PG::draw_arrow(image_pg,cols/2,y_,x_,y_+150);
+
+                // 属性节点
+                cv::Rect rect(x_-10-30, y_+300, 20,20);//左上坐标（x,y）和矩形的长(x)宽(y)
+                cv::rectangle(image_pg, rect, cv::Scalar(0, 160, 255),-1, cv::LINE_8,0);//绘制填充矩形
+                Draw_PG::draw_attribute_arrow(image_pg,x_,y_+150+15,x_-30, y_+300);
+
+                // 地址节点
+                Draw_PG::draw_triangle(image_pg, x_+30, y_+300);
+                Draw_PG::draw_attribute_arrow(image_pg,x_,y_+150+15,x_+30, y_+300);
+                object_pg_pose.insert(std::map<string,Vector2d>::value_type(object_name,Vector2d(x_+30,y_+300+20)));
+                
+
+                // xyz
+                cv::Rect rect1(x_-60-30, y_+420, 120,20);//左上坐标（x,y）和矩形的长(x)宽(y)
+                cv::rectangle(image_pg, rect1, cv::Scalar(0, 255, 0), 1, cv::LINE_8,0);//绘制矩形
+                Draw_PG::draw_attribute_arrow(image_pg,x_-30, y_+320,x_-30, y_+420);
+
+                ss.str("");
+                ss << double((int)(object_xyz_[0]*1000+0.5f)/1000.0) 
+                    << "," 
+                    << double((int)(object_xyz_[1]*1000+0.5f)/1000.0)
+                    << "," 
+                    << double((int)(object_xyz_[2]*1000+0.5f)/1000.0);
+                cv::putText(image_pg, ss.str(), cv::Point(x_-60-27,y_+435), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 0), 1, 8);
+
+
+                // BOOST_FOREACH (boost::property_tree::ptree::value_type &vtt, knowledgegraph_object)
+                // {
+                //     boost::property_tree::ptree vt = vtt.second;
+                //     string name_kg = vt.get<string>("name");
+                //     if(object_name == name_kg)
+                //     {
+                //         // Draw_PG::draw_attribute_node(image_pg, int x, int y, std::string node_name)
+                //     }
+        
+                // }
+
+                count++;
+                
+            }
+
+            // 连接节点间的关系
+            for(auto iter = support_relationships.begin();iter != support_relationships.end(); iter++)
+            {
+                
+                std::string name_on = iter->first;
+                std::string name_support = iter->second;
+            
+                Vector2d start = object_pg_pose[name_on];
+                Vector2d end = object_pg_pose[name_support];
+                Vector2d meddle = Vector2d((start[0]+end[0])/2,start[1]+50);
+                Draw_PG::draw_Arc(image_pg,cv::Point(start[0],start[1]),cv::Point(meddle[0],meddle[1]),cv::Point(end[0],end[1]),2,cv::Scalar(255, 255, 0));
+
+            }
+            for(auto iter = contian_relationships.begin();iter != contian_relationships.end(); iter++)
+            {
+                
+                std::string name_in = iter->first;
+                std::string name_out = iter->second;
+            
+                Vector2d start = object_pg_pose[name_in];
+                Vector2d end = object_pg_pose[name_out];
+                Vector2d meddle = Vector2d((start[0]+end[0])/2,start[1]+50);
+                Draw_PG::draw_Arc(image_pg,cv::Point(start[0],start[1]),cv::Point(meddle[0],meddle[1]),cv::Point(end[0],end[1]),2,cv::Scalar(255, 255, 0));
+
+            }
+            // for(auto iter = adjoin_relationships.begin();iter != adjoin_relationships.end(); iter++)
+            // {
+                
+            //     std::string name_beadjoin = iter->first;
+            //     std::vector<string> name_adjoin = iter->second;
+            //     Vector2d start = object_pg_pose[name_beadjoin];
+            
+            //     for(int i=0; i<name_adjoin.size(); i++)
+            //     {
+            //         Vector2d end = object_pg_pose[name_adjoin[i]];
+            //         Vector2d meddle = Vector2d((start[0]+end[0])/2,start[1]+50);
+            //         Draw_PG::draw_Arc(image_pg,cv::Point(start[0],start[1]),cv::Point(meddle[0],meddle[1]),cv::Point(end[0],end[1]),2);
+
+            //     }
+                
             // }
 
-            count++;
-            
-        }
-
-        // 连接节点间的关系
-        for(auto iter = support_relationships.begin();iter != support_relationships.end(); iter++)
-        {
-            
-            std::string name_on = iter->first;
-            std::string name_support = iter->second;
-           
-            Vector2d start = object_pg_pose[name_on];
-            Vector2d end = object_pg_pose[name_support];
-            Vector2d meddle = Vector2d((start[0]+end[0])/2,start[1]+50);
-            Draw_PG::draw_Arc(image_pg,cv::Point(start[0],start[1]),cv::Point(meddle[0],meddle[1]),cv::Point(end[0],end[1]),2);
+            // 发布pg图
+            pg_graph = image_pg;
+            sensor_msgs::ImagePtr pg_msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", image_pg).toImageMsg();
+            pub_pg_show.publish(pg_msg);
 
         }
-        for(auto iter = contian_relationships.begin();iter != contian_relationships.end(); iter++)
-        {
-            
-            std::string name_in = iter->first;
-            std::string name_out = iter->second;
-           
-            Vector2d start = object_pg_pose[name_in];
-            Vector2d end = object_pg_pose[name_out];
-            Vector2d meddle = Vector2d((start[0]+end[0])/2,start[1]+50);
-            Draw_PG::draw_Arc(image_pg,cv::Point(start[0],start[1]),cv::Point(meddle[0],meddle[1]),cv::Point(end[0],end[1]),2);
-
-        }
-        // for(auto iter = adjoin_relationships.begin();iter != adjoin_relationships.end(); iter++)
-        // {
-            
-        //     std::string name_beadjoin = iter->first;
-        //     std::vector<string> name_adjoin = iter->second;
-        //     Vector2d start = object_pg_pose[name_beadjoin];
-           
-        //     for(int i=0; i<name_adjoin.size(); i++)
-        //     {
-        //         Vector2d end = object_pg_pose[name_adjoin[i]];
-        //         Vector2d meddle = Vector2d((start[0]+end[0])/2,start[1]+50);
-        //         Draw_PG::draw_Arc(image_pg,cv::Point(start[0],start[1]),cv::Point(meddle[0],meddle[1]),cv::Point(end[0],end[1]),2);
-
-        //     }
-            
-        // }
-
-        // 发布pg图
-        pg_graph = image_pg;
-        sensor_msgs::ImagePtr pg_msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", image_pg).toImageMsg();
-        pub_pg_show.publish(pg_msg);
 
     }
+    
 
     // 发布带节点关系的图像
     sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", image).toImageMsg();

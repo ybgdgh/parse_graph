@@ -22,7 +22,8 @@ namespace Draw_PG
     void draw_arrow(cv::Mat img_pg, int x1, int y1, int x2, int y2);
     void draw_attribute_arrow(cv::Mat img_pg, int x1, int y1, int x2, int y2);
     void draw_triangle(cv::Mat img_pg, int x, int y);
-    void draw_Arc(Mat img_pg, Point StartPoint, Point meddlePoint, Point EndPoint, int Fill);
+    void draw_Arc(Mat img_pg, Point StartPoint, Point meddlePoint, Point EndPoint, int Fill,cv::Scalar color);
+
 }
 
 
