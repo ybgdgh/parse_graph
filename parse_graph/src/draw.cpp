@@ -97,7 +97,7 @@ namespace Draw_PG
 
     // 圆弧箭头
     // 图像、圆心、开始点、结束点、线宽
-    void draw_Arc(Mat img_pg, Point StartPoint, Point meddlePoint, Point EndPoint, int Fill)
+    void draw_Arc(Mat img_pg, Point StartPoint, Point meddlePoint, Point EndPoint, int Fill,cv::Scalar color)
     {
         if (Fill <= 0) return;
 
@@ -185,7 +185,7 @@ namespace Draw_PG
         
         Dots.push_back(EndPoint);
         RNG &rng = theRNG();
-        Scalar color = Scalar(255, 0, 0);
+        
         for (int i = 0; i < Dots.size() - 1; i++) {
             line(img_pg, Dots[i], Dots[i + 1], color, Fill);
         }

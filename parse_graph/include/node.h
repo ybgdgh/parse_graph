@@ -119,11 +119,15 @@ class Parse_Node
     // record support and on object's Bbox
     std::map<string,Vector9d> Support_box;
     std::map<string,Vector3d> On_box;
+    std::map<string,Vector3d> On_box_local;
+
     // record object's 3d pose
     std::map<string,Vector3d> object_xyz;
+    std::map<string,Vector3d> object_xyz_local;
 
     // record the V of the object
     std::map<string,Vector3d> object_V;
+    std::map<string,Vector3d> object_V_local;
 
     // record the probability of the object
     std::map<string,float> object_P;
@@ -147,6 +151,19 @@ class Parse_Node
     // save the id for every class . calss1,2,3...
     std::map<string,std::vector<string>> class_id;
     
+
+    // keyframe group active
+    std::vector<std::vector<std::tuple<string,Vector3d,Vector3d>>> KFG_active;
+    // keyframe group optimize   
+    std::vector<std::vector<std::tuple<string,Vector3d,Vector3d>>> KFG_optimize;
+    //Flag of active is full!
+    bool KFG_Active_Finish;
+    // KFG number
+    int KFG_Number;
+
+    
+
+       
 
  
     tf::TransformListener listener;
