@@ -67,6 +67,11 @@
 <build_export_depend>message_generation</build_export_depend>
 <build_export_depend>geometry_msgs</build_export_depend>
 
+<build_export_depend>move_base_msgs</build_export_depend>
+
+<build_depend>move_base_msgs</build_depend>
+<exec_depend>move_base_msgs</exec_depend>
+
 <build_depend>apriltag_ros</build_depend>
 <exec_depend>apriltag_ros</exec_depend>
 <exec_depend>geometry_msgs</exec_depend>
