@@ -618,6 +618,30 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
 
             on_flag = true;
         }
+        else if(ar_marker.id[0] == 8)
+        {
+            name = "cup_1";
+
+            Eigen::Vector3d trans(trans_object[0],trans_object[1],trans_object[2]);    
+
+            S_on_object << trans(0),trans(1),trans_object[2];     
+            
+            marker_scale << 0.1,0.1,0.1;
+
+            on_flag = true;
+        }
+        else if(ar_marker.id[0] == 9)
+        {
+            name = "cup_2";
+
+            Eigen::Vector3d trans(trans_object[0],trans_object[1],trans_object[2]);    
+
+            S_on_object << trans(0),trans(1),trans_object[2];     
+            
+            marker_scale << 0.1,0.1,0.1;
+
+            on_flag = true;
+        }
         
         else 
         {

@@ -1,0 +1,5 @@
+<launch>
+
+    <node name="parse_graph" pkg="parse_graph" type="voice_input" output="screen"/>
+
+</launch>

@@ -42,6 +42,9 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   apriltag_ros
   darknet_ros_msgs
+  move_base_msgs
+  occupancy_grid_utils
+  ${catkin_INCLUDE_DIRS}
 )
 ##   * add "message_runtime" and every package in MSG_DEP_SET to
 ##     catkin_package(CATKIN_DEPENDS ...)
@@ -228,5 +231,13 @@ add_executable(parse
 add_dependencies(parse ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(parse
   jsoncpp
+  ${catkin_LIBRARIES}
+)
+
+add_executable(voice_input
+  src/voice_input.cpp
+)
+add_dependencies(voice_input ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(voice_input
   ${catkin_LIBRARIES}
 )

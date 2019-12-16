@@ -58,4 +58,3 @@ namespace Map_Compute
 }
 
 #endif
-
