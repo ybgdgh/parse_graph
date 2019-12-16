@@ -23,7 +23,7 @@ void costMapCallback(const nav_msgs::OccupancyGridConstPtr& msg) {
 bool Remedial_Nav(Vector3d &nav)
 {
     if(!costmap_received_) {
-        ROS_ERROR("Costmap not received, ensure that costmap topic has data (default topic: /move_base/global_costmap/costmap)");
+        // ROS_ERROR("Costmap not received, ensure that costmap topic has data (default topic: /move_base/global_costmap/costmap)");
         return false;
     }
 
@@ -138,6 +138,7 @@ int main(int argc, char *argv[])
                                 cout << "succeed  xyz :" << nav[0] << " , " << nav[1] << " , " << nav[2] << endl;
                                 cout << "Its : " << ob << " " << relation << " " << sub << endl;
 
+                                if(!Remedial_Nav(nav)) ros::spinOnce();
 
                                 if(Remedial_Nav(nav))
                                 {
