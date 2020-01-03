@@ -121,6 +121,8 @@ class Parse_Node
     std::map<string,Vector3d> On_box;
     std::map<string,Vector3d> On_box_local;
 
+    std::map<string,Vector9d> Scene_box;    
+
     // record object's 3d pose
     std::map<string,Vector3d> object_xyz;
     std::map<string,Vector3d> object_xyz_local;
@@ -137,14 +139,19 @@ class Parse_Node
     std::map<string,string> support_relationships;
     std::map<string,string> contian_relationships;
     std::map<string,std::vector<string>> adjoin_relationships;
+
+
+    std::map<string,std::vector<string>> Scene_Relation;
   
     // bool TV=false,desk=false,computer=false,chair=false,air_conditioner=false,floor_=false,desk1=false,desk2=false,desk3=false;
 
     boost::property_tree::ptree vg_AOG;
-    boost::property_tree::ptree kitchen,conference,bathroom,office,dining,living,bedroom;
-    boost::property_tree::ptree office_object,office_relationships;
+    // boost::property_tree::ptree kitchen,conference,bathroom,office,dining,living,bedroom;
+    boost::property_tree::ptree current_scene_tree;
+    boost::property_tree::ptree current_object,current_relationships;
     boost::property_tree::ptree knowledgegraph ;
     boost::property_tree::ptree knowledgegraph_object ;
+    string current_scene;
 
     std::vector<std::tuple<string,Vector4d,float>> id_object_p_only;
 
@@ -157,7 +164,7 @@ class Parse_Node
     // keyframe group optimize   
     std::vector<std::vector<std::tuple<string,Vector3d,Vector3d>>> KFG_optimize;
     //Flag of active is full!
-    bool KFG_Active_Finish;
+    bool KFG_Active_Finish,KFG_AR_Active_Finish;
     // KFG number
     int KFG_Number;
 

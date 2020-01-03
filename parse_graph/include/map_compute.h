@@ -49,6 +49,7 @@ namespace Map_Compute
         std::map<string,Vector9d> Support_box,
         std::map<string,Vector3d> On_box,
         std::map<string,Vector3d> object_V,
+        std::vector<string> current_scene,
         std::vector<std::tuple<string,string,string,float>>& rela_after_map);
 
 

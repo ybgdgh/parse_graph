@@ -2,7 +2,7 @@
  * Copyright (c) 2019, The Parse_graph author.
  * All rights reserved.
  *
- * Author:ybg
+ * Author:dm
  * This is the node file for subscribe and publish the ros node.
  */
 
@@ -27,24 +27,30 @@ Parse_Node::Parse_Node(ros::NodeHandle nh,ros::NodeHandle np)
 
 
     // read AOG scene
-    vg_AOG = Parse_Node::loadPoseFile("/home/ybg/AOG_all.json");
-    kitchen = vg_AOG.get_child("kitchen");
-    conference = vg_AOG.get_child("conference");
-    bathroom = vg_AOG.get_child("bathroom");
-    office = vg_AOG.get_child("office");
-    dining = vg_AOG.get_child("dining");
-    living = vg_AOG.get_child("living");
-    bedroom = vg_AOG.get_child("bedroom");
+    vg_AOG = Parse_Node::loadPoseFile("/home/dm/AOG_all.json");
+    // kitchen = vg_AOG.get_child("kitchen");
+    // conference = vg_AOG.get_child("conference");
+    // bathroom = vg_AOG.get_child("bathroom");
+    // office = vg_AOG.get_child("office");
+    // dining = vg_AOG.get_child("dining");
+    // living = vg_AOG.get_child("living");
+    // bedroom = vg_AOG.get_child("bedroom");
 
-    office_object = office.get_child("objects");
-    office_relationships = office.get_child("relationships");
+    // office_object = office.get_child("objects");
+    // office_relationships = office.get_child("relationships");
+
+    // init current scene
+    current_scene = "office";
+    current_scene_tree = vg_AOG.get_child(current_scene);
     
-
-    knowledgegraph = Parse_Node::loadPoseFile("/home/ybg/knowledgegraph.json");
+    
+    // attribute
+    knowledgegraph = Parse_Node::loadPoseFile("/home/dm/knowledgegraph.json");
     knowledgegraph_object = knowledgegraph.get_child("object");
 
     //inite the Flag of active is full!
     KFG_Active_Finish = false;
+    KFG_AR_Active_Finish = false;
     KFG_Number = 50;
 
     std::cout << "init finish" << std::endl;
@@ -53,17 +59,23 @@ Parse_Node::Parse_Node(ros::NodeHandle nh,ros::NodeHandle np)
 
 Parse_Node::~Parse_Node()
 {
-    if(true)
+    Json::Value root;
+    
+    // for(auto iter_ = Scene_Relation.begin();iter_ != Scene_Relation.end(); iter_++)
     {
-        Json::Value root;
-        root["name"] = "meeting_room";
-
+        Json::Value Scene;
+        // Scene["name"] = iter_->first;
+        // std::vector<string> simple_scene = iter_->second;
         Json::Value attribute;
 
         // support object
         for(auto iter = Support_box.begin();iter != Support_box.end(); iter++)
         {
             string name_support_object = iter->first;
+
+            // if(std::find(simple_scene.begin(), simple_scene.end(), name_support_object) == simple_scene.end()) 
+            //     continue;
+
             Vector9d Sbox_support_object = iter->second;
 
             Json::Value object;
@@ -89,13 +101,18 @@ Parse_Node::~Parse_Node()
                     object["attribute"] = attribute;
                 }
             }
-            root["object"].append(object);
+            Scene["object"].append(object);
+
         }
 
         // on object
         for(auto iter = On_box.begin();iter != On_box.end(); iter++)
         {
             string name_on_object = iter->first;
+
+            // if(std::find(simple_scene.begin(), simple_scene.end(), name_on_object) == simple_scene.end()) 
+            //     continue;
+
             Vector3d Sbox_on_object = iter->second;
 
             Json::Value object;
@@ -133,25 +150,27 @@ Parse_Node::~Parse_Node()
             }
             
 
-            root["object"].append(object);
+            Scene["object"].append(object);
         }
 
-
-        cout << "StyledWriter:" << endl;
-        Json::StyledWriter sw;
-        cout << sw.write(root) << endl << endl;
-
-        // 输出到文件
-        ofstream dataFile;//记录数据
-        dataFile.open("/home/ybg/kg.json",ios::out);
-        dataFile << sw.write(root);
-        dataFile.close();
-
-        cv::imwrite("/home/ybg/pg_graph.png",pg_graph);
-        cv::imwrite("/home/ybg/pg_image_show.png",pg_image_show);
-
-
+        root.append(Scene);
     }
+
+
+    cout << "StyledWriter:" << endl;
+    Json::StyledWriter sw;
+    cout << sw.write(root) << endl << endl;
+
+    // 输出到文件
+    ofstream dataFile;//记录数据
+    dataFile.open("/home/dm/kg.json",ios::out);
+    dataFile << sw.write(root);
+    dataFile.close();
+
+    cv::imwrite("/home/dm/pg_graph.png",pg_graph);
+    cv::imwrite("/home/dm/pg_image_show.png",pg_image_show);
+
+
 }
 
 void Parse_Node::Publishtf(Vector3d point,std::string tf1, std::string tf2)
@@ -222,7 +241,7 @@ void Parse_Node::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
     }
     catch(tf::TransformException e)
     {
-        ROS_WARN("Failed to compute ar pose, skipping scan (%s)", e.what());
+        ROS_WARN("Failed to compute dark pose, skipping scan (%s)", e.what());
         ros::Duration(1.0).sleep();
         return ;
     }
@@ -243,7 +262,8 @@ void Parse_Node::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
 
     // compute the MAP of object
     id_object_p_only.clear();
-    Map_Compute::Compute_Object_Map(office_object,Bound_msg,id_object_p_only);
+    current_object = current_scene_tree.get_child("objects");
+    Map_Compute::Compute_Object_Map(current_object,Bound_msg,id_object_p_only);
 
     // cout << "id_object_p_only size : " << id_object_p_only.size() << endl;
 
@@ -289,7 +309,7 @@ void Parse_Node::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
 
         string name_darknet;
         bool Same_flag=false;
-        if(ob_name == "cup" || ob_name == "mouse" || ob_name == "chair" || ob_name == "tvmonitor" || ob_name == "keyboard")
+        if(ob_name == "cup" || ob_name == "mouse" || ob_name == "chair" || ob_name == "tvmonitor" || ob_name == "keyboard" || ob_name == "bottle" || ob_name == "book")
         {
             // 之前无此class，则创建class类别，添加id 0
             if(class_id.count(ob_name) == 0)
@@ -397,7 +417,7 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
 {
     int t=0;
     int sum=0;
-    bool support_flag = false, on_flag = false;
+    bool support_flag = false, on_flag = false, scene_flag = false;
 
     std::stringstream ss;
 
@@ -468,20 +488,34 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
         // TV
         if(ar_marker.id[0] == 0)
         {
-            name = "TV";
+            name = "desk_0";
 
-            Eigen::Vector3d trans(trans_object[0],trans_object[1],trans_object[2]);    
+            Eigen::Vector3d t2(0,-2,0);
+            Eigen::Vector3d t3(-1,0,0);
+            Eigen::Vector3d t4(-1,-2,0);
 
-            S_on_object << trans(0),trans(1),trans_object[2];     
+            Eigen::Vector3d trans1(trans_object[0],trans_object[1],trans_object[2]);    
+
+            Eigen::Vector3d trans2 = T_base_to_apri * t2; 
+
+            Eigen::Vector3d trans3 = T_base_to_apri * t3;
+
+            Eigen::Vector3d trans4 = T_base_to_apri * t4;
+
+            S_support_object << trans1(0),trans1(1),
+                        trans2(0),trans2(1),
+                        trans3(0),trans3(1),
+                        trans4(0),trans4(1),
+                        trans_object[2];   
             
-            marker_scale << 0.5,0.3,0.1;
+            marker_scale << 1,2,1;
 
-            on_flag = true;
+            support_flag = true;
         }
         // desk support function && desk == false
         else if(ar_marker.id[0] == 1 )
         {
-            name = "desk";
+            name = "desk_1";
 
             Eigen::Vector3d t2(1,0,0);
             Eigen::Vector3d t3(0,-2,0);
@@ -495,9 +529,9 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
 
             Eigen::Vector3d trans4 = T_base_to_apri * t4;
 
-            Parse_Node::Publishtf(trans2,"map","desk_2");
-            Parse_Node::Publishtf(trans3,"map","desk_3");
-            Parse_Node::Publishtf(trans4,"map","desk_4");
+            // Parse_Node::Publishtf(trans2,"map","desk_2");
+            // Parse_Node::Publishtf(trans3,"map","desk_3");
+            // Parse_Node::Publishtf(trans4,"map","desk_4");
 
             S_support_object << trans1(0),trans1(1),
                         trans2(0),trans2(1),
@@ -514,11 +548,11 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
         // computer support_function
         else if(ar_marker.id[0] == 2)
         {
-            name = "computer";
+            name = "desk_2";
 
-            Eigen::Vector3d t2(0.1,0,0);
-            Eigen::Vector3d t3(0,-0.3,0);
-            Eigen::Vector3d t4(0.1,-0.3,0);
+            Eigen::Vector3d t2(1,0,0);
+            Eigen::Vector3d t3(0,-2,0);
+            Eigen::Vector3d t4(1,-2,0);
 
             Eigen::Vector3d trans1(trans_object[0],trans_object[1],trans_object[2]);    
 
@@ -534,7 +568,7 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
                         trans4(0),trans4(1),
                         trans_object[2];
 
-            marker_scale << 0.1,0.3,0.3;
+            marker_scale << 1,2,1;
             
             support_flag = true;
             
@@ -542,11 +576,11 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
         // chair support_function
         else if(ar_marker.id[0] == 3)
         {
-            name = "chair";
+            name = "office";
 
-            Eigen::Vector3d t2(0.2,0,0);
-            Eigen::Vector3d t3(0,-0.2,0);
-            Eigen::Vector3d t4(0.2,-0.2,0);
+            Eigen::Vector3d t2(0,0,-4);
+            Eigen::Vector3d t3(5,0,0);
+            Eigen::Vector3d t4(5,0,-4);
 
             Eigen::Vector3d trans1(trans_object[0],trans_object[1],trans_object[2]);    
 
@@ -556,53 +590,83 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
 
             Eigen::Vector3d trans4 = T_base_to_apri * t4;
 
+            Parse_Node::Publishtf(trans2,"map","office_2");
+            Parse_Node::Publishtf(trans3,"map","office_3");
+            Parse_Node::Publishtf(trans4,"map","office_4");
+
             S_support_object << trans1(0),trans1(1),
                         trans2(0),trans2(1),
                         trans3(0),trans3(1),
                         trans4(0),trans4(1),
                         trans_object[2];
 
-            marker_scale << 0.2,0.2,-0.5;
+            marker_scale << 5,4,2;
             
-            support_flag = true;            
+            scene_flag = true;            
 
             // cout << "chair : " << S_object << endl; 
         }
         // air_conditioner
         else if(ar_marker.id[0] == 4)
         {
-            name = "air_conditioner";
+            name = "desk_4";
 
-            Eigen::Vector3d trans(trans_object[0],trans_object[1],trans_object[2]);    
+            Eigen::Vector3d t2(0.5,0,0);
+            Eigen::Vector3d t3(0,-1,0);
+            Eigen::Vector3d t4(0.5,-1,0);
 
-            S_on_object << trans(0),trans(1),trans_object[2];
+            Eigen::Vector3d trans1(trans_object[0],trans_object[1],trans_object[2]);    
 
-            marker_scale << 0.1,1,0.1;
+            Eigen::Vector3d trans2 = T_base_to_apri * t2; 
+
+            Eigen::Vector3d trans3 = T_base_to_apri * t3;
+
+            Eigen::Vector3d trans4 = T_base_to_apri * t4;
+
+            S_support_object << trans1(0),trans1(1),
+                        trans2(0),trans2(1),
+                        trans3(0),trans3(1),
+                        trans4(0),trans4(1),
+                        trans_object[2];
+
+            marker_scale << 0.5,1,1;
             
-            on_flag = true;
+            support_flag = true;
             
         }
         else if(ar_marker.id[0] == 5)
-        {
-            name = "desk1";
+        {//chugai
+            name = "cabinet";
 
-            Eigen::Vector3d t2(0,0,0.5);
-            Eigen::Vector3d trans = T_base_to_apri * t2;    
+            Eigen::Vector3d t2(-3,0,0);
+            Eigen::Vector3d t3(0,0,-0.5);
+            Eigen::Vector3d t4(0,-3,-0.5);
 
-            S_on_object << trans(0),trans(1),trans_object[2];
-            // cout << "S_on_object" << S_on_object << endl;
-            // cout << "trans" << trans << endl;
-            marker_scale << 0.1,0.3,0.3;
+            Eigen::Vector3d trans1(trans_object[0],trans_object[1],trans_object[2]);    
+
+            Eigen::Vector3d trans2 = T_base_to_apri * t2; 
+
+            Eigen::Vector3d trans3 = T_base_to_apri * t3;
+
+            Eigen::Vector3d trans4 = T_base_to_apri * t4;
+
+            S_support_object << trans1(0),trans1(1),
+                        trans2(0),trans2(1),
+                        trans3(0),trans3(1),
+                        trans4(0),trans4(1),
+                        trans_object[2];
+
+            marker_scale << 3,0.5,3;
             
-            on_flag = true;
+            support_flag = true;
         }
         else if(ar_marker.id[0] == 6)
         {
-            name = "seet_1";
+            name = "conference";
 
-            Eigen::Vector3d t2(-0.2,0,0);
-            Eigen::Vector3d t3(0,0,-0.2);
-            Eigen::Vector3d t4(-0.2,0,-0.2);
+            Eigen::Vector3d t2(0,0,-4);
+            Eigen::Vector3d t3(4,0,0);
+            Eigen::Vector3d t4(4,0,-4);
 
             Eigen::Vector3d trans1(trans_object[0],trans_object[1],trans_object[2]);    
 
@@ -612,23 +676,27 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
 
             Eigen::Vector3d trans4 = T_base_to_apri * t4;
 
+            Parse_Node::Publishtf(trans2,"map","conference_2");
+            Parse_Node::Publishtf(trans3,"map","conference_3");
+            Parse_Node::Publishtf(trans4,"map","conference_4");
+
             S_support_object << trans1(0),trans1(1),
                         trans2(0),trans2(1),
                         trans3(0),trans3(1),
                         trans4(0),trans4(1),
                         trans_object[2];
 
-            marker_scale << 0.2,0.2,0.2;
+            marker_scale << 4,4,2;
 
-            support_flag = true;
+            scene_flag = true;
         }
         else if(ar_marker.id[0] == 7)
         {
-            name = "chair_1";
+            name = "sofa";
 
-            Eigen::Vector3d t3(1,0,0);
-            Eigen::Vector3d t2(0,0,-0.5);
-            Eigen::Vector3d t4(1,0,-0.5);
+            Eigen::Vector3d t2(0,-1,0);
+            Eigen::Vector3d t3(-2,0,0);
+            Eigen::Vector3d t4(-2,-1,0);
 
             Eigen::Vector3d trans1(trans_object[0],trans_object[1],trans_object[2]);    
 
@@ -644,7 +712,7 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
                         trans4(0),trans4(1),
                         trans_object[2];
 
-            marker_scale << 1,0.5,0.3;
+            marker_scale << 2,1,1;
 
             support_flag = true;
         }
@@ -679,7 +747,28 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
         }
 
 
-        if(support_flag == true)
+        if(scene_flag == true)
+        {
+            scene_flag = false;
+
+            // record the current scene calss
+            current_scene_tree = vg_AOG.get_child(name);
+            current_scene = name;
+
+            if(Scene_box.count(name) > 0)
+            {
+                Scene_box[name]=S_support_object;
+                object_xyz[name]=Vector3d(S_support_object[0],S_support_object[1],S_support_object[8]);
+                object_V[name]=marker_scale;
+                continue;
+            }
+            Scene_box.insert(std::map<string,Vector9d>::value_type(name,S_support_object));
+            object_xyz.insert(std::map<string,Vector3d>::value_type(name,Vector3d(S_support_object[0],S_support_object[1],S_support_object[8])));
+            object_V.insert(std::map<string,Vector3d>::value_type(name,marker_scale));
+            KFG_AR_Active_Finish = true;
+            
+        }
+        else if(support_flag == true)
         {
             support_flag = false;
 
@@ -693,6 +782,7 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
             Support_box.insert(std::map<string,Vector9d>::value_type(name,S_support_object));
             object_xyz.insert(std::map<string,Vector3d>::value_type(name,Vector3d(S_support_object[0],S_support_object[1],S_support_object[8])));
             object_V.insert(std::map<string,Vector3d>::value_type(name,marker_scale));
+            KFG_AR_Active_Finish = true;
             
         }
         else if(on_flag == true)
@@ -704,11 +794,12 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
                 On_box[name]=S_on_object;
                 object_xyz[name]=S_on_object;
                 object_V[name]=marker_scale;
-
+                continue;
             }
             On_box.insert(std::map<string,Vector3d>::value_type(name,S_on_object));
             object_xyz.insert(std::map<string,Vector3d>::value_type(name,S_on_object));
             object_V.insert(std::map<string,Vector3d>::value_type(name,marker_scale));
+            KFG_AR_Active_Finish = true;
             
         }
  
@@ -847,8 +938,9 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
     
     // compute local map relationships
     std::vector<std::tuple<string,string,string,float>> Local_rela_after_map;
+    current_relationships = current_scene_tree.get_child("relationships");
     Map_Compute::Compute_Local_Relationships_Map(
-        office_relationships,
+        current_relationships,
         Support_box,
         On_box_local,
         object_2d_ar_pose,
@@ -933,93 +1025,149 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
 
     // 关系注释
     // 50times
-    if(KFG_Active_Finish)
+    if(KFG_Active_Finish || KFG_AR_Active_Finish)
     {
-        KFG_Active_Finish=false;
-        // the sum of xyz V 将同一类的xyz和V放到同一容器
-        std::map<string,std::vector<std::tuple<Vector3d,Vector3d>>> KFG_sum;
-        for(int i=0;i<KFG_optimize.size();i++)
+        // dark part
+        if(KFG_Active_Finish)
         {
-            for(int j=0;j<KFG_optimize[i].size();j++)
+            KFG_AR_Active_Finish=false;
+            KFG_Active_Finish=false;
+            // the sum of xyz V 将同一类的xyz和V放到同一容器
+            std::map<string,std::vector<std::tuple<Vector3d,Vector3d>>> KFG_sum;
+            for(int i=0;i<KFG_optimize.size();i++)
             {
-                string KFG_name ;
-                Vector3d KFG_xyz;
-                Vector3d KFG_V;
-                std::tie(KFG_name,KFG_xyz,KFG_V) = KFG_optimize[i][j];
-
-                if(KFG_sum.count(KFG_name) == 0)
+                for(int j=0;j<KFG_optimize[i].size();j++)
                 {
-                    std::vector<std::tuple<Vector3d,Vector3d>> xyz_V ;
-                    xyz_V.push_back(make_tuple(KFG_xyz,KFG_V)) ;
-                    KFG_sum.insert(make_pair(KFG_name,xyz_V));
+                    string KFG_name ;
+                    Vector3d KFG_xyz;
+                    Vector3d KFG_V;
+                    std::tie(KFG_name,KFG_xyz,KFG_V) = KFG_optimize[i][j];
 
-                }
-                else 
-                    KFG_sum[KFG_name].push_back(make_tuple(KFG_xyz,KFG_V));
+                    if(KFG_sum.count(KFG_name) == 0)
+                    {
+                        std::vector<std::tuple<Vector3d,Vector3d>> xyz_V ;
+                        xyz_V.push_back(make_tuple(KFG_xyz,KFG_V)) ;
+                        KFG_sum.insert(make_pair(KFG_name,xyz_V));
 
-            }
-        }
+                    }
+                    else 
+                        KFG_sum[KFG_name].push_back(make_tuple(KFG_xyz,KFG_V));
 
-        // 遍历每一种classid
-        for(auto iter = KFG_sum.begin();iter != KFG_sum.end(); iter++)
-        {
-            string KDF_name_oneclass = iter->first;
-            std::vector<std::tuple<Vector3d,Vector3d>> KDF_sum_oneclassid = iter->second;
-            if(KDF_sum_oneclassid.size()>20)
-            {
-                // xyz V 求和取均值
-                Vector3d xyz_sum = Vector3d::Zero();
-                Vector3d V_sum = Vector3d::Zero();
-                for(int i=0;i<KDF_sum_oneclassid.size();i++)
-                {
-                    // xyz_sum[0]=xyz_sum[0]+KDF_xyz_sum_oneclass[i][0];
-                    // xyz_sum[1]=xyz_sum[1]+KDF_xyz_sum_oneclass[i][1];
-                    // xyz_sum[2]=xyz_sum[2]+KDF_xyz_sum_oneclass[i][2];
-                    Vector3d xyz_sum_one,V_sum_one;
-
-                    std::tie(xyz_sum_one,V_sum_one) = KDF_sum_oneclassid[i];
-
-                    xyz_sum=xyz_sum+xyz_sum_one;
-                    V_sum=V_sum+V_sum_one;
-                }
-                xyz_sum = xyz_sum/KDF_sum_oneclassid.size();
-                V_sum = V_sum/KDF_sum_oneclassid.size();
-                // cout << "V_sum : " << KDF_name_oneclass << " " << V_sum << endl;
-                
-                cout << "record______: " << KDF_name_oneclass << endl;
-                if(On_box.count(KDF_name_oneclass) == 0)
-                {
-                    On_box.insert(std::map<string,Vector3d>::value_type(KDF_name_oneclass,xyz_sum));
-                    object_xyz.insert(std::map<string,Vector3d>::value_type(KDF_name_oneclass,xyz_sum));
-                    object_V.insert(std::map<string,Vector3d>::value_type(KDF_name_oneclass,V_sum));
-                }
-                else
-                {
-                    On_box[KDF_name_oneclass]=xyz_sum;
-                    object_xyz[KDF_name_oneclass]=xyz_sum;
-                    if(V_sum[0]>0.1 && V_sum[1]>0.1 && V_sum[2]>0.1)
-                        object_V[KDF_name_oneclass]=V_sum;
                 }
             }
 
+            // 遍历每一种classid
+            for(auto iter = KFG_sum.begin();iter != KFG_sum.end(); iter++)
+            {
+                string KDF_name_oneclass = iter->first;
+                std::vector<std::tuple<Vector3d,Vector3d>> KDF_sum_oneclassid = iter->second;
+                if(KDF_sum_oneclassid.size()>20)
+                {
+                    // xyz V 求和取均值
+                    Vector3d xyz_sum = Vector3d::Zero();
+                    Vector3d V_sum = Vector3d::Zero();
+                    for(int i=0;i<KDF_sum_oneclassid.size();i++)
+                    {
+                        // xyz_sum[0]=xyz_sum[0]+KDF_xyz_sum_oneclass[i][0];
+                        // xyz_sum[1]=xyz_sum[1]+KDF_xyz_sum_oneclass[i][1];
+                        // xyz_sum[2]=xyz_sum[2]+KDF_xyz_sum_oneclass[i][2];
+                        Vector3d xyz_sum_one,V_sum_one;
+
+                        std::tie(xyz_sum_one,V_sum_one) = KDF_sum_oneclassid[i];
+
+                        xyz_sum=xyz_sum+xyz_sum_one;
+                        V_sum=V_sum+V_sum_one;
+                    }
+                    xyz_sum = xyz_sum/KDF_sum_oneclassid.size();
+                    V_sum = V_sum/KDF_sum_oneclassid.size();
+                    // cout << "V_sum : " << KDF_name_oneclass << " " << V_sum << endl;
+                    
+                    // update the globle on_box
+                    cout << "record______: " << KDF_name_oneclass << endl;
+                    if(On_box.count(KDF_name_oneclass) == 0)
+                    {
+                        On_box.insert(std::map<string,Vector3d>::value_type(KDF_name_oneclass,xyz_sum));
+                        object_xyz.insert(std::map<string,Vector3d>::value_type(KDF_name_oneclass,xyz_sum));
+                        object_V.insert(std::map<string,Vector3d>::value_type(KDF_name_oneclass,V_sum));
+                    }
+                    else
+                    {
+                        On_box[KDF_name_oneclass]=xyz_sum;
+                        object_xyz[KDF_name_oneclass]=xyz_sum;
+                        if(V_sum[0]>0.1 && V_sum[1]>0.1 && V_sum[2]>0.1)
+                            object_V[KDF_name_oneclass]=V_sum;
+                    }
+
+                    
+                }
+
+            }
+
+            // update local date
+            On_box_local.clear();
+            On_box_local.insert(On_box.begin(),On_box.end());
+            object_xyz_local.clear();
+            object_xyz_local.insert(object_xyz.begin(),object_xyz.end());
+            object_V_local.clear();
+            object_V_local.insert(object_V.begin(),object_V.end());
+
         }
 
-        // update local date
-        On_box_local.clear();
-        On_box_local.insert(On_box.begin(),On_box.end());
-        object_xyz_local.clear();
-        object_xyz_local.insert(object_xyz.begin(),object_xyz.end());
-        object_V_local.clear();
-        object_V_local.insert(object_V.begin(),object_V.end());
+        // ar part
+        if(KFG_AR_Active_Finish)
+        {
+            KFG_AR_Active_Finish=false;
+        }
+        // cout << "KFG_AR_Active_Finish " << KFG_AR_Active_Finish << endl;
+        
+        // 判断在哪个房间
+        for(auto iter = Scene_box.begin();iter != Scene_box.end(); iter++)
+        {
+            string scene_name = iter->first;
+            Vector9d Sbox_scene_object_ = iter->second;
 
+            // scene面积   
+            Vector2d a(Sbox_scene_object_[0],Sbox_scene_object_[1]);           
+            Vector2d b(Sbox_scene_object_[2],Sbox_scene_object_[3]);           
+            Vector2d c(Sbox_scene_object_[4],Sbox_scene_object_[5]);           
+            Vector2d d(Sbox_scene_object_[6],Sbox_scene_object_[7]); 
+
+            std::vector<string> scene_objects;
+            for(auto iter_ = object_xyz.begin();iter_ != object_xyz.end(); iter_++)
+            {
+                string scene_object_name = iter_->first;
+                Vector3d scene_object_xyz = iter_->second;
+
+                if(scene_name != scene_object_name)
+                {
+                    Vector2d pp(scene_object_xyz[0],scene_object_xyz[1]);     
+                    if((pp-a).transpose()*(b-a) > 0
+                    && (pp-a).transpose()*(c-a) > 0
+                    && (pp-d).transpose()*(b-d) > 0
+                    && (pp-d).transpose()*(c-d) > 0)
+                    {
+                        scene_objects.push_back(scene_object_name);
+                    }     
+                    
+                }
+            }
+            
+            if(Scene_Relation.count(scene_name) == 0)
+                Scene_Relation.insert(make_pair(scene_name,scene_objects));
+            else 
+                Scene_Relation[scene_name] = scene_objects;
+
+        }
     
         // compute map relationships
         std::vector<std::tuple<string,string,string,float>> Globe_rela_after_map;
+        current_relationships = current_scene_tree.get_child("relationships");
         Map_Compute::Compute_Globe_Relationships_Map(
-            office_relationships,
+            current_relationships,
             Support_box,
             On_box,
             object_V,
+            Scene_Relation[current_scene],
             Globe_rela_after_map);
      
         for(int i=0;i<Globe_rela_after_map.size();i++)
@@ -1049,6 +1197,10 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
         }
 
 
+        
+        
+
+
         int rows = 600;
         int cols = 200+(Support_box.size() + On_box.size())*200;
         int x_ = cols/2;
@@ -1062,7 +1214,7 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
 
             string pg_name = knowledgegraph.get<string>("name");
             
-            Draw_PG::draw_node(image_pg,cols/2,y_,"pg_name");
+            Draw_PG::draw_node(image_pg,cols/2,y_,pg_name);
 
             for(auto iter = object_xyz.begin();iter != object_xyz.end(); iter++)
             {

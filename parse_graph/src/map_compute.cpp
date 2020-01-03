@@ -19,7 +19,7 @@ std::tuple<string,string,string,float> rela_after_map_one;
 std::vector<std::tuple<string,string,float>> ob_sub_sum_p;
 std::map<string,float> rela_odd;
 
-bool MAP_DEBUG = true;
+bool MAP_DEBUG = false;
 
 
 
@@ -154,7 +154,7 @@ void Map_Compute::Compute_Object_Map(
 
 // local optimize
 void Map_Compute::Compute_Local_Relationships_Map(
-    boost::property_tree::ptree office_relationships,
+    boost::property_tree::ptree current_relationships,
     std::map<string,Vector9d> Support_box,
     std::map<string,Vector3d> On_box_local,
     std::map<string,Vector2d> object_2d_ar_pose,
@@ -297,7 +297,7 @@ void Map_Compute::Compute_Local_Relationships_Map(
             {
                 string map_name;
                 float MAP=0;
-                BOOST_FOREACH (boost::property_tree::ptree::value_type &v, office_relationships) //object层
+                BOOST_FOREACH (boost::property_tree::ptree::value_type &v, current_relationships) //object层
                 {
                     if(v.first == ob_name)
                     {
@@ -355,10 +355,11 @@ void Map_Compute::Compute_Local_Relationships_Map(
 
 // globe optimize
 void Map_Compute::Compute_Globe_Relationships_Map(
-    boost::property_tree::ptree office_relationships,
+    boost::property_tree::ptree current_relationships,
     std::map<string,Vector9d> Support_box,
     std::map<string,Vector3d> On_box,
     std::map<string,Vector3d> object_V,
+    std::vector<string> current_scene,
     std::vector<std::tuple<string,string,string,float>>& rela_after_map)
 {
     // record the relationships each pair of objects and the probobility
@@ -367,12 +368,19 @@ void Map_Compute::Compute_Globe_Relationships_Map(
     for(auto iter = Support_box.begin();iter != Support_box.end(); iter++)
     {
         string name_support_object_ = iter->first;
+        // 若不是当前场景则返回
+        if(std::find(current_scene.begin(), current_scene.end(), name_support_object_) == current_scene.end()) 
+            continue;
+
         Vector9d Sbox_support_object_ = iter->second;
         rela_pp.clear(); 
 
         for(auto iter_ = On_box.begin();iter_ != On_box.end(); iter_++)
         {
             string name_on_object_ = iter_->first;
+            // 若不是当前场景则返回
+            if(std::find(current_scene.begin(), current_scene.end(), name_on_object_) == current_scene.end()) 
+                continue;
 
             Vector3d Sbox_on_object = iter_->second;
             rela_p.clear();
@@ -511,7 +519,7 @@ void Map_Compute::Compute_Globe_Relationships_Map(
             {
                 string map_name;
                 float MAP=0;
-                BOOST_FOREACH (boost::property_tree::ptree::value_type &v, office_relationships) //object层
+                BOOST_FOREACH (boost::property_tree::ptree::value_type &v, current_relationships) //object层
                 {
                     if(v.first == ob_name)
                     {
@@ -559,7 +567,7 @@ void Map_Compute::Compute_Globe_Relationships_Map(
             rela_after_map.push_back(rela_after_map_one);
 
             // record the sum probability
-            BOOST_FOREACH (boost::property_tree::ptree::value_type &v, office_relationships) //object层
+            BOOST_FOREACH (boost::property_tree::ptree::value_type &v, current_relationships) //object层
             {
                 if(v.first == ob_name)
                 {
