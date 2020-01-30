@@ -35,6 +35,7 @@
 #include "apriltag_ros/AprilTagDetectionArray.h"
 #include "darknet_ros_msgs/BoundingBox.h"
 #include "darknet_ros_msgs/BoundingBoxes.h"
+#include "mask_rcnn_ros/Result.h"
 #include <sensor_msgs/image_encodings.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/Image.h>
@@ -68,6 +69,8 @@ class Parse_Node
     void tag_detections_mark(const apriltag_ros::AprilTagDetectionArray& msg);
 
     void darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg);
+
+    void mask_rcnn_Callback(const mask_rcnn_ros::Result& mask_msg);
 
     void CameraInfo(const sensor_msgs::CameraInfo& camera);
 
@@ -135,6 +138,10 @@ class Parse_Node
     std::map<string,float> object_P;
     
 
+    // recoord maks rcnn result class and Bbox
+    map<string,Vector6d> mask_class_point3d;
+
+
     // record the relationships of object
     std::map<string,string> support_relationships;
     std::map<string,string> contian_relationships;
@@ -177,7 +184,7 @@ class Parse_Node
 
     ros::Subscriber sub_ar_track;
 
-    ros::Subscriber sub_darknet,sub_CameraInfo,sub_depth_camera,sub_color_camera;
+    ros::Subscriber sub_darknet,sub_CameraInfo,sub_depth_camera,sub_color_camera,sub_mask_rcnn;
 
     ros::Publisher pub_pg_show,pub_pic;
     ros::Publisher marker_pub;

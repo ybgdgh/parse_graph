@@ -16,4 +16,8 @@
     <!-- rviz view /-->
     <node pkg="rviz" type="rviz" name="rviz" args="-d $(find orb_slam2_ros)/ros/config/rviz_config.rviz"/>
 
+
+    <node name="bag" pkg="rosbag" type="play"
+        args="-l $(find mask_rcnn_ros)/bags/mo.bag" />
+
 </launch>

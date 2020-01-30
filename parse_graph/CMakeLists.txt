@@ -44,6 +44,7 @@ find_package(catkin REQUIRED COMPONENTS
   darknet_ros_msgs
   move_base_msgs
   occupancy_grid_utils
+  mask_rcnn_ros
   ${catkin_INCLUDE_DIRS}
 )
 ##   * add "message_runtime" and every package in MSG_DEP_SET to

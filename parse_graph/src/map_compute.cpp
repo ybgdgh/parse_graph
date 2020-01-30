@@ -141,7 +141,7 @@ void Map_Compute::Compute_Object_Map(
         }
         if(MAP_DEBUG)  cout << "map_name: " << map_name << "p : " << id_object_p[i][map_name] << endl;
 
-        if(id_object_p[i][map_name]>0.9)
+        if(id_object_p[i][map_name]>0.85)
         {
             std::tuple<string,Vector4d,float> after_object_map_one = make_tuple(map_name,object_Bbox[i],id_object_p[i][map_name]);
             after_object_map.push_back(after_object_map_one);
