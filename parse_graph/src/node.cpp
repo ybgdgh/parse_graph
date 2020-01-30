@@ -1691,7 +1691,7 @@ void Parse_Node::depth_Callback(const sensor_msgs::ImageConstPtr& depth_msg)
 {
   try
   {
-    depth_ptr = cv_bridge::toCvCopy(depth_msg, sensor_msgs::image_encodings::TYPE_16UC1); // TYPE_32FC1
+    depth_ptr = cv_bridge::toCvCopy(depth_msg, sensor_msgs::image_encodings::TYPE_32FC1); // TYPE_32FC1
 
   }
   catch (cv_bridge::Exception& e)
