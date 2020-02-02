@@ -143,8 +143,8 @@ class Parse_Node
 
 
     // record the relationships of object
-    std::map<string,string> support_relationships;
-    std::map<string,string> contian_relationships;
+    std::map<string,string> support_relationships, support_relationships_local;
+    std::map<string,string> contian_relationships, contian_relationships_local;
     std::map<string,std::vector<string>> adjoin_relationships;
 
 

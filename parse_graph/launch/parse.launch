@@ -9,7 +9,10 @@
     <!--<node pkg="tf" type="static_transform_publisher" name="camera" 
           args="0 0 0 -1.57 0 -1.57  camera_link camera 100" />-->
 
-    <node name="parse_graph" pkg="parse_graph" type="parse" output="screen"/>
+    <node name="parse_graph" pkg="parse_graph" type="parse" output="screen">
+        <param name="Base_Flag" type="bool" value="true"/>
+        <param name="Scannet_Flag" type="bool" value="false"/>
+    </node>
 
     <!--<include file="$(find pub_marker)/launch/shapes.launch" />-->
 
@@ -18,6 +21,6 @@
 
 
     <node name="bag" pkg="rosbag" type="play"
-        args="-l $(find mask_rcnn_ros)/bags/mo.bag" />
+        args="-l /home/ybg/ROS_code/bagfiles/c2o.bag" />
 
 </launch>

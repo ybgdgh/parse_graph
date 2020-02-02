@@ -8,11 +8,15 @@
 
 #include "node.h"
 
+bool Base_Flag,Scannet_Flag;
 
 Parse_Node::Parse_Node(ros::NodeHandle nh,ros::NodeHandle np)
 :nh_(nh),
  np_(np)
 {
+    nh_.param<bool>("Base_Flag",Base_Flag,false);
+    nh_.param<bool>("Scannet_Flag",Scannet_Flag,false);
+    
     //订阅odom和激光的话题
     sub_ar_track = nh_.subscribe("tag_detections", 10, &Parse_Node::tag_detections_mark,this);
     sub_darknet = nh_.subscribe("darknet_ros/bounding_boxes", 10, &Parse_Node::darknet_Bbox,this);
@@ -41,7 +45,7 @@ Parse_Node::Parse_Node(ros::NodeHandle nh,ros::NodeHandle np)
     // office_relationships = office.get_child("relationships");
 
     // init current scene
-    current_scene = "office";
+    current_scene = "conference";
     current_scene_tree = vg_AOG.get_child(current_scene);
     
     
@@ -107,51 +111,105 @@ Parse_Node::~Parse_Node()
         }
 
         // on object
-        for(auto iter = On_box.begin();iter != On_box.end(); iter++)
+        if(Base_Flag)
         {
-            string name_on_object = iter->first;
-
-            if(std::find(simple_scene.begin(), simple_scene.end(), name_on_object) == simple_scene.end()) 
-                continue;
-
-            Vector3d Sbox_on_object = iter->second;
-
-            Json::Value object;
-            object["name"] = Json::Value(name_on_object);
-            object.removeMember("XYZ");
-            object["XYZ"].append(Sbox_on_object[0]);
-            object["XYZ"].append(Sbox_on_object[1]);
-            object["XYZ"].append(Sbox_on_object[2]);
-
-            if(support_relationships.count(name_on_object) > 0)
+            for(auto iter = On_box_local.begin();iter != On_box_local.end(); iter++)
             {
-                object["on"] = Json::Value(support_relationships[name_on_object]);
-            }
+                string name_on_object = iter->first;
 
-            if(contian_relationships.count(name_on_object) > 0)
-            {
-                object["contain"] = Json::Value(contian_relationships[name_on_object]);
-            }
-              
-            BOOST_FOREACH (boost::property_tree::ptree::value_type &vtt, knowledgegraph_object)
-            {
-                boost::property_tree::ptree vt = vtt.second;
-                string name_kg = vt.get<string>("name");
-                if(name_on_object == name_kg )
+                if(std::find(simple_scene.begin(), simple_scene.end(), name_on_object) == simple_scene.end()) 
+                    continue;
+
+                Vector3d Sbox_on_object = iter->second;
+
+                Json::Value object;
+                object["name"] = Json::Value(name_on_object);
+                object.removeMember("XYZ");
+                object["XYZ"].append(Sbox_on_object[0]);
+                object["XYZ"].append(Sbox_on_object[1]);
+                object["XYZ"].append(Sbox_on_object[2]);
+
+                if(support_relationships_local.count(name_on_object) > 0)
                 {
-                    BOOST_FOREACH (boost::property_tree::ptree::value_type &v, vt)
-                    {
-                        if(v.second.get_value<std::string>() != name_kg)
-                        {
-                            attribute[v.first]=Json::Value(v.second.get_value<std::string>());
-                        }
-                    }
-                    object["attribute"] = attribute;
+                    object["on"] = Json::Value(support_relationships_local[name_on_object]);
                 }
-            }
-            
 
-            Scene["object"].append(object);
+                if(contian_relationships_local.count(name_on_object) > 0)
+                {
+                    object["contain"] = Json::Value(contian_relationships_local[name_on_object]);
+                }
+                
+                BOOST_FOREACH (boost::property_tree::ptree::value_type &vtt, knowledgegraph_object)
+                {
+                    boost::property_tree::ptree vt = vtt.second;
+                    string name_kg = vt.get<string>("name");
+                    if(name_on_object == name_kg )
+                    {
+                        BOOST_FOREACH (boost::property_tree::ptree::value_type &v, vt)
+                        {
+                            if(v.second.get_value<std::string>() != name_kg)
+                            {
+                                attribute[v.first]=Json::Value(v.second.get_value<std::string>());
+                            }
+                        }
+                        object["attribute"] = attribute;
+                    }
+                }
+                
+
+                Scene["object"].append(object);
+            }
+
+        }
+        else
+        {
+            for(auto iter = On_box.begin();iter != On_box.end(); iter++)
+            {
+                string name_on_object = iter->first;
+
+                if(std::find(simple_scene.begin(), simple_scene.end(), name_on_object) == simple_scene.end()) 
+                    continue;
+
+                Vector3d Sbox_on_object = iter->second;
+
+                Json::Value object;
+                object["name"] = Json::Value(name_on_object);
+                object.removeMember("XYZ");
+                object["XYZ"].append(Sbox_on_object[0]);
+                object["XYZ"].append(Sbox_on_object[1]);
+                object["XYZ"].append(Sbox_on_object[2]);
+
+                if(support_relationships.count(name_on_object) > 0)
+                {
+                    object["on"] = Json::Value(support_relationships[name_on_object]);
+                }
+
+                if(contian_relationships.count(name_on_object) > 0)
+                {
+                    object["contain"] = Json::Value(contian_relationships[name_on_object]);
+                }
+                
+                BOOST_FOREACH (boost::property_tree::ptree::value_type &vtt, knowledgegraph_object)
+                {
+                    boost::property_tree::ptree vt = vtt.second;
+                    string name_kg = vt.get<string>("name");
+                    if(name_on_object == name_kg )
+                    {
+                        BOOST_FOREACH (boost::property_tree::ptree::value_type &v, vt)
+                        {
+                            if(v.second.get_value<std::string>() != name_kg)
+                            {
+                                attribute[v.first]=Json::Value(v.second.get_value<std::string>());
+                            }
+                        }
+                        object["attribute"] = attribute;
+                    }
+                }
+                
+
+                Scene["object"].append(object);
+            }
+
         }
 
         root.append(Scene);
@@ -544,7 +602,7 @@ void Parse_Node::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
 
         string name_darknet;
         bool Same_flag=false;
-        if(ob_name == "cup" || ob_name == "mouse" || ob_name == "chair" || ob_name == "tvmonitor" || ob_name == "keyboard" || ob_name == "bottle" || ob_name == "book")
+        if(ob_name == "cup" || ob_name == "mouse" || ob_name == "chair" || ob_name == "tvmonitor" || ob_name == "keyboard" || ob_name == "bottle" || ob_name == "book" || ob_name == "bowl")
         {
             // 之前无此class，则创建class类别，添加id 0
             if(class_id.count(ob_name) == 0)
@@ -624,7 +682,9 @@ void Parse_Node::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
                 On_box_local.insert(std::map<string,Vector3d>::value_type(name_darknet,S_darknet_object));
                 object_xyz_local.insert(std::map<string,Vector3d>::value_type(name_darknet,S_darknet_object));
                 object_V_local.insert(std::map<string,Vector3d>::value_type(name_darknet,marker_scale));       
-                object_P.insert(std::map<string,float>::value_type(name_darknet,ob_sum_p));       
+                object_P.insert(std::map<string,float>::value_type(name_darknet,ob_sum_p));     
+                if(Base_Flag) Scene_Relation[current_scene].push_back(name_darknet);            
+                  
             }
             else if(On_box_local.count(name_darknet) > 0)
             {    
@@ -638,15 +698,18 @@ void Parse_Node::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
             // cout << "marker_scale : " << name_darknet << " " << marker_scale << endl;
             // cout << "size of On_box : " << On_box.size() << endl;
 
-            KFG_active_oneobject=make_tuple(name_darknet,S_darknet_object,marker_scale);
-            KFG_active_oneimage.push_back(KFG_active_oneobject);
+            if(!Base_Flag)
+            {
+                KFG_active_oneobject=make_tuple(name_darknet,S_darknet_object,marker_scale);
+                KFG_active_oneimage.push_back(KFG_active_oneobject);
+            }
             
         }
 
        
   
     }
-    KFG_active.push_back(KFG_active_oneimage);
+    if(!Base_Flag) KFG_active.push_back(KFG_active_oneimage);
 
     // transform active to optimize
     if(KFG_active.size() >= 50)
@@ -686,7 +749,6 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
         catch(tf::TransformException e)
         {
             ROS_WARN("Failed to compute ar pose, skipping scan (%s)", e.what());
-            ros::Duration(1.0).sleep();
             return ;
         }
         trans_object << transform.getOrigin().x(),transform.getOrigin().y(),transform.getOrigin().z();
@@ -866,9 +928,9 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
         {//chugai
             name = "cabinet";
 
-            Eigen::Vector3d t2(-3,0,0);
+            Eigen::Vector3d t2(-4,0,0);
             Eigen::Vector3d t3(0,0,-0.5);
-            Eigen::Vector3d t4(0,-3,-0.5);
+            Eigen::Vector3d t4(-4,0,-0.5);
 
             Eigen::Vector3d trans1(trans_object[0],trans_object[1],trans_object[2]);    
 
@@ -877,6 +939,10 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
             Eigen::Vector3d trans3 = T_base_to_apri * t3;
 
             Eigen::Vector3d trans4 = T_base_to_apri * t4;
+
+            Parse_Node::Publishtf(trans2,"map","cabinet_2");
+            Parse_Node::Publishtf(trans3,"map","cabinet_3");
+            Parse_Node::Publishtf(trans4,"map","cabinet_4");
 
             S_support_object << trans1(0),trans1(1),
                         trans2(0),trans2(1),
@@ -974,7 +1040,7 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
             object_V.insert(std::map<string,Vector3d>::value_type(name,marker_scale));
             std::vector<string> scene_objects;            
             Scene_Relation.insert(make_pair(current_scene,scene_objects));
-            KFG_AR_Active_Finish = true;
+            if(!Base_Flag)KFG_AR_Active_Finish = true;
             
         }
         else if(support_flag == true)
@@ -992,7 +1058,7 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
             object_xyz.insert(std::map<string,Vector3d>::value_type(name,Vector3d(S_support_object[0],S_support_object[1],S_support_object[8])));
             object_V.insert(std::map<string,Vector3d>::value_type(name,marker_scale));
             Scene_Relation[current_scene].push_back(name);
-            KFG_AR_Active_Finish = true;
+            if(!Base_Flag)KFG_AR_Active_Finish = true;
             
         }
         else if(on_flag == true)
@@ -1010,7 +1076,7 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
             object_xyz.insert(std::map<string,Vector3d>::value_type(name,S_on_object));
             object_V.insert(std::map<string,Vector3d>::value_type(name,marker_scale));
             Scene_Relation[current_scene].push_back(name);            
-            KFG_AR_Active_Finish = true;
+            if(!Base_Flag)KFG_AR_Active_Finish = true;
             
         }
  
@@ -1041,65 +1107,68 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
 
 
     // 生成scannet格式数据集
-    if(frame_count == 5)
-    {
-        // color
-        std::stringstream scan_count;
-        scan_count << "/home/ybg/projects/3D-Scene-Graph/data/mo_scannet/color/" << scannet_count << ".jpg";
-        cv::imwrite(scan_count.str(),image);
-        scan_count.str("");
-        // depth
-        scan_count << "/home/ybg/projects/3D-Scene-Graph/data/mo_scannet/depth/" << scannet_count << ".png";
-        cv::imwrite(scan_count.str(),depth_pic);
-        // pose
-        //定义机器人本体到相机之间的变换
-        Eigen::Vector3d trans_Bbox;
-        Eigen::Quaterniond quat_Bbox;
-
-        // cout << "Bound_msg : " << Bound_msg.header.frame_id << endl;
-        tf::StampedTransform transform_Bbox;
-        try
+    if(Scannet_Flag)
+    {    
+        if(frame_count == 5)
         {
-            listener.lookupTransform("/map", "/camera",ros::Time(0), transform_Bbox);
-        }
-        catch(tf::TransformException e)
-        {
-            ROS_WARN("Failed to compute dark pose, skipping scan (%s)", e.what());
-            ros::Duration(1.0).sleep();
-            return ;
-        }
-        trans_Bbox << transform_Bbox.getOrigin().x(),transform_Bbox.getOrigin().y(),transform_Bbox.getOrigin().z();
+            // color
+            std::stringstream scan_count;
+            scan_count << "/home/ybg/projects/3D-Scene-Graph/data/mo_scannet/color/" << scannet_count << ".jpg";
+            cv::imwrite(scan_count.str(),image);
+            scan_count.str("");
+            // depth
+            scan_count << "/home/ybg/projects/3D-Scene-Graph/data/mo_scannet/depth/" << scannet_count << ".png";
+            cv::imwrite(scan_count.str(),depth_pic);
+            // pose
+            //定义机器人本体到相机之间的变换
+            Eigen::Vector3d trans_Bbox;
+            Eigen::Quaterniond quat_Bbox;
 
-        quat_Bbox.w() = transform_Bbox.getRotation().getW();
-        quat_Bbox.x() = transform_Bbox.getRotation().getX();
-        quat_Bbox.y() = transform_Bbox.getRotation().getY();
-        quat_Bbox.z() = transform_Bbox.getRotation().getZ();
-
-        Eigen::Isometry3d T_base_to_camera = Eigen::Isometry3d::Identity();
-        T_base_to_camera = Eigen::Isometry3d::Identity();
-        T_base_to_camera.rotate ( quat_Bbox );
-        T_base_to_camera.pretranslate ( trans_Bbox );
-        
-        scan_count.str("");
-        scan_count << "/home/ybg/projects/3D-Scene-Graph/data/mo_scannet/pose/" << scannet_count << ".txt";    
-        ofstream ofile(scan_count.str());
-        
-        // ofile<< T_base_to_camera.matrix();
-        for(int i=0;i<4;i++)
-        {
-            for(int j=0;j<4;j++)
+            // cout << "Bound_msg : " << Bound_msg.header.frame_id << endl;
+            tf::StampedTransform transform_Bbox;
+            try
             {
-                ofile << T_base_to_camera.matrix()(i,j)<< " ";
+                listener.lookupTransform("/map", "/camera",ros::Time(0), transform_Bbox);
             }
-            ofile << endl;
+            catch(tf::TransformException e)
+            {
+                ROS_WARN("Failed to compute dark pose, skipping scan (%s)", e.what());
+                ros::Duration(1.0).sleep();
+                return ;
+            }
+            trans_Bbox << transform_Bbox.getOrigin().x(),transform_Bbox.getOrigin().y(),transform_Bbox.getOrigin().z();
+
+            quat_Bbox.w() = transform_Bbox.getRotation().getW();
+            quat_Bbox.x() = transform_Bbox.getRotation().getX();
+            quat_Bbox.y() = transform_Bbox.getRotation().getY();
+            quat_Bbox.z() = transform_Bbox.getRotation().getZ();
+
+            Eigen::Isometry3d T_base_to_camera = Eigen::Isometry3d::Identity();
+            T_base_to_camera = Eigen::Isometry3d::Identity();
+            T_base_to_camera.rotate ( quat_Bbox );
+            T_base_to_camera.pretranslate ( trans_Bbox );
+            
+            scan_count.str("");
+            scan_count << "/home/ybg/projects/3D-Scene-Graph/data/mo_scannet/pose/" << scannet_count << ".txt";    
+            ofstream ofile(scan_count.str());
+            
+            // ofile<< T_base_to_camera.matrix();
+            for(int i=0;i<4;i++)
+            {
+                for(int j=0;j<4;j++)
+                {
+                    ofile << T_base_to_camera.matrix()(i,j)<< " ";
+                }
+                ofile << endl;
+            }
+            ofile.close();//④
+            scannet_count++;
+            frame_count=0;
+            
         }
-        ofile.close();//④
-        scannet_count++;
-        frame_count=0;
-        
-    }
         frame_count++;
     
+    }
 
     // 节点注释
     // 画圈、写字
@@ -1221,8 +1290,36 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
         object_V_local,
         Local_rela_after_map);
 
+   
+    for(int i=0;i<Local_rela_after_map.size();i++)
+    {
+        string Ob_name,Sub_name,Relation;
+        float Relation_P;
+        std::tie(Ob_name,Sub_name,Relation,Relation_P) = Local_rela_after_map[i];
+        // cout << Ob_name << " , " << Sub_name << " " << Relation << " is " << Relation_P << endl;
 
-    for(auto iter = support_relationships.begin();iter != support_relationships.end(); iter++)
+        if(Relation == "ON")
+        {
+            if(support_relationships_local.count(Ob_name) == 0)
+                support_relationships_local.insert(std::map<string,string>::value_type(Ob_name,Sub_name));
+            else if(support_relationships_local.count(Ob_name) > 0)
+                support_relationships_local[Ob_name]=Sub_name;
+            
+        }
+
+        if(Relation == "IN")
+        {
+            if(contian_relationships_local.count(Ob_name) == 0)
+                contian_relationships_local.insert(std::map<string,string>::value_type(Ob_name,Sub_name));
+            else if(contian_relationships_local.count(Ob_name) > 0)
+                contian_relationships_local[Ob_name]=Sub_name;
+        }     
+                
+    }
+    
+
+
+    for(auto iter = support_relationships_local.begin();iter != support_relationships_local.end(); iter++)
     {
         string Ob_name = iter->first;
         string Sub_name = iter->second;
@@ -1253,7 +1350,7 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
         
     }
 
-    for(auto iter = contian_relationships.begin();iter != contian_relationships.end(); iter++)
+    for(auto iter = contian_relationships_local.begin();iter != contian_relationships_local.end(); iter++)
     {
         string Ob_name = iter->first;
         string Sub_name = iter->second;
@@ -1466,6 +1563,12 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
             }     
                     
         }
+
+        //将全局关系更新到local关系中
+        support_relationships_local.clear();
+        support_relationships_local.insert(support_relationships.begin(),support_relationships.end());
+        contian_relationships_local.clear();
+        contian_relationships_local.insert(contian_relationships.begin(),contian_relationships.end());
 
         
 
@@ -1691,7 +1794,10 @@ void Parse_Node::depth_Callback(const sensor_msgs::ImageConstPtr& depth_msg)
 {
   try
   {
-    depth_ptr = cv_bridge::toCvCopy(depth_msg, sensor_msgs::image_encodings::TYPE_32FC1); // TYPE_32FC1
+    if(Scannet_Flag)
+        depth_ptr = cv_bridge::toCvCopy(depth_msg, sensor_msgs::image_encodings::TYPE_16UC1); // TYPE_32FC1
+    else    
+        depth_ptr = cv_bridge::toCvCopy(depth_msg, sensor_msgs::image_encodings::TYPE_32FC1); // TYPE_32FC1
 
   }
   catch (cv_bridge::Exception& e)

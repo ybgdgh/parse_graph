@@ -7,6 +7,8 @@ int main(int argc, char *argv[])
     ros::init(argc, argv, "parse_node");
     ros::NodeHandle nh;
     ros::NodeHandle np("~");
+    bool Base_Flag;
+
 
     Parse_Node parse_debug(nh,np);
 
