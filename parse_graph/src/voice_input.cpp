@@ -99,8 +99,7 @@ int main(int argc, char *argv[])
     // ros::Publisher pub_nav = nh.advertise<move_base_msgs::MoveBaseActionGoal>("move_base/goal", 10);
     ros::Publisher pub_nav = nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal", 10);
 
-    boost::property_tree::ptree PG = INPUT::loadPoseFile("/home/ybg/kg.json");
-    boost::property_tree::ptree PG_object = PG.get_child("object");
+    boost::property_tree::ptree PG = INPUT::loadPoseFile("/home/ybg/ROS_code/catkin_vision/src/parse_graph/data/parse_graph.json");
 
     // move_base_msgs::MoveBaseActionGoal scene_nav;
     geometry_msgs::PoseStamped scene_nav;
@@ -108,76 +107,86 @@ int main(int argc, char *argv[])
     ros::Rate loop_rate(20);
     while (ros::ok())
     {
-        string object,subject,relation;
-
-        
-        if(cin >> object >> relation >> subject)
+        string object,subject,relation,scene_rel,scene_goal;
+    
+        if(cin >> object >> relation >> subject >> scene_rel >> scene_goal)
         {
             // cin >> object >> relation >> subject;
             // ROS_INFO("I heard: %s, %s, %s", object,relation,subject);
-            cout << "I heard : " << object << " " << relation << " " << subject << endl;
+            cout << "I heard : " << object << " " << relation << " " << subject << " " << scene_rel << " " << scene_goal << endl;
 
 
             Vector3d nav;
-            BOOST_FOREACH (boost::property_tree::ptree::value_type &vtt, PG_object)
+
+            BOOST_FOREACH (boost::property_tree::ptree::value_type &pg_scene, PG)
             {
-                boost::property_tree::ptree vt = vtt.second;
-                string ob = vt.get<string>("name");
-                string::size_type idx;
-                idx = ob.find(object);
-                if(idx != string::npos) // have
+                string Scene = pg_scene.second.get<std::string>("name");
+                cout << "scene :" << Scene << endl;
+                if(scene_goal == Scene)
                 {
-                    BOOST_FOREACH (boost::property_tree::ptree::value_type &v, vt)
+                    boost::property_tree::ptree PG_object = pg_scene.second.get_child("object");
+                
+                    BOOST_FOREACH (boost::property_tree::ptree::value_type &vtt, PG_object)
                     {
-                        if(relation == v.first)
+                        boost::property_tree::ptree vt = vtt.second;
+                        string ob = vt.get<string>("name");
+                        string::size_type idx;
+                        idx = ob.find(object);
+                        if(idx != string::npos) // have
                         {
-                            string sub = vt.get<string>(relation);
-                            string::size_type idxx;
-                            idxx = sub.find(subject);
-                            if(idxx != string::npos)
+                            BOOST_FOREACH (boost::property_tree::ptree::value_type &v, vt)
                             {
-                                boost::property_tree::ptree xyz = vt.get_child("XYZ");                     
-                                boost::property_tree::ptree::iterator xyz_ = xyz.begin();
-                                int i=0;
-                                for(; xyz_ != xyz.end(); ++xyz_)
+                                if(relation == v.first)
                                 {
-                                    nav[i] = xyz_->second.get_value<float>();
-                                    i++;
+                                    string sub = vt.get<string>(relation);
+                                    string::size_type idxx;
+                                    idxx = sub.find(subject);
+                                    if(idxx != string::npos)
+                                    {
+                                        boost::property_tree::ptree xyz = vt.get_child("XYZ");                     
+                                        boost::property_tree::ptree::iterator xyz_ = xyz.begin();
+                                        int i=0;
+                                        for(; xyz_ != xyz.end(); ++xyz_)
+                                        {
+                                            nav[i] = xyz_->second.get_value<float>();
+                                            i++;
+                                        }
+                                    
+                                        cout << "succeed  xyz :" << nav[0] << " , " << nav[1] << " , " << nav[2] << endl;
+                                        cout << "Its : " << ob << " " << relation << " " << sub << endl;
+
+                                        if(!Remedial_Nav(nav)) ros::spinOnce();
+
+                                        if(Remedial_Nav(nav))
+                                        {
+                                            nav_flag = true;
+
+                                            // scene_nav.goal.target_pose.pose.position.x = nav[0];
+                                            // scene_nav.goal.target_pose.pose.position.y = nav[1];
+                                            // scene_nav.goal.target_pose.pose.position.z = 0;
+
+                                            // scene_nav.goal.target_pose.pose.orientation.x = 0;
+                                            // scene_nav.goal.target_pose.pose.orientation.y = 0;
+                                            // scene_nav.goal.target_pose.pose.orientation.z = 0;
+                                            // scene_nav.goal.target_pose.pose.orientation.w = 1;
+
+                                            scene_nav.pose.position.x = nav[0];
+                                            scene_nav.pose.position.y = nav[1];
+                                            scene_nav.pose.position.z = 0;
+
+                                            scene_nav.pose.orientation.x = 0;
+                                            scene_nav.pose.orientation.y = 0;
+                                            scene_nav.pose.orientation.z = 0;
+                                            scene_nav.pose.orientation.w = 1;
+                                        }
+
+                                        break;
+                                    }
                                 }
-                            
-                                cout << "succeed  xyz :" << nav[0] << " , " << nav[1] << " , " << nav[2] << endl;
-                                cout << "Its : " << ob << " " << relation << " " << sub << endl;
-
-                                if(!Remedial_Nav(nav)) ros::spinOnce();
-
-                                if(Remedial_Nav(nav))
-                                {
-                                    nav_flag = true;
-
-                                    // scene_nav.goal.target_pose.pose.position.x = nav[0];
-                                    // scene_nav.goal.target_pose.pose.position.y = nav[1];
-                                    // scene_nav.goal.target_pose.pose.position.z = 0;
-
-                                    // scene_nav.goal.target_pose.pose.orientation.x = 0;
-                                    // scene_nav.goal.target_pose.pose.orientation.y = 0;
-                                    // scene_nav.goal.target_pose.pose.orientation.z = 0;
-                                    // scene_nav.goal.target_pose.pose.orientation.w = 1;
-
-                                    scene_nav.pose.position.x = nav[0];
-                                    scene_nav.pose.position.y = nav[1];
-                                    scene_nav.pose.position.z = 0;
-
-                                    scene_nav.pose.orientation.x = 0;
-                                    scene_nav.pose.orientation.y = 0;
-                                    scene_nav.pose.orientation.z = 0;
-                                    scene_nav.pose.orientation.w = 1;
-                                }
-
-                                break;
+                                    
+                
                             }
                         }
-                            
-        
                     }
                 }
             }

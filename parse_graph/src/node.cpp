@@ -174,22 +174,15 @@ Parse_Node::~Parse_Node()
             object["XYZ"].append(Sbox_support_object[1]);
             object["XYZ"].append(Sbox_support_object[8]);
 
-            BOOST_FOREACH (boost::property_tree::ptree::value_type &vtt, knowledgegraph_object)
-            {
-                boost::property_tree::ptree vt = vtt.second;
-                string name_kg = vt.get<string>("name");
-                if(name_support_object == name_kg )
-                {
-                    BOOST_FOREACH (boost::property_tree::ptree::value_type &v, vt)
-                    {
-                        if(v.second.get_value<std::string>() != name_kg)
-                        {
-                            attribute[v.first]=Json::Value(v.second.get_value<std::string>());
-                        }
-                    }
-                    object["attribute"] = attribute;
-                }
-            }
+    
+            attribute["color"]=Json::Value(Rgb_color[name_support_object]);
+            attribute.removeMember("size");
+            attribute["size"].append(double((int)(object_V[name_support_object][0]*1000+0.5f)/1000.0));
+            attribute["size"].append(double((int)(object_V[name_support_object][1]*1000+0.5f)/1000.0));
+            attribute["size"].append(double((int)(object_V[name_support_object][2]*1000+0.5f)/1000.0));
+  
+            object["attribute"] = attribute;
+     
             Scene["object"].append(object);
 
         }
@@ -223,23 +216,13 @@ Parse_Node::~Parse_Node()
                     object["contain"] = Json::Value(contian_relationships_local[name_on_object]);
                 }
                 
-                BOOST_FOREACH (boost::property_tree::ptree::value_type &vtt, knowledgegraph_object)
-                {
-                    boost::property_tree::ptree vt = vtt.second;
-                    string name_kg = vt.get<string>("name");
-                    if(name_on_object == name_kg )
-                    {
-                        BOOST_FOREACH (boost::property_tree::ptree::value_type &v, vt)
-                        {
-                            if(v.second.get_value<std::string>() != name_kg)
-                            {
-                                attribute[v.first]=Json::Value(v.second.get_value<std::string>());
-                            }
-                        }
-                        object["attribute"] = attribute;
-                    }
-                }
-                
+                attribute["color"]=Json::Value(Rgb_color[name_on_object]);
+                attribute.removeMember("size");
+                attribute["size"].append(double((int)(object_V[name_on_object][0]*1000+0.5f)/1000.0));
+                attribute["size"].append(double((int)(object_V[name_on_object][1]*1000+0.5f)/1000.0));
+                attribute["size"].append(double((int)(object_V[name_on_object][2]*1000+0.5f)/1000.0));
+
+                object["attribute"] = attribute;
 
                 Scene["object"].append(object);
             }
@@ -273,23 +256,13 @@ Parse_Node::~Parse_Node()
                     object["contain"] = Json::Value(contian_relationships[name_on_object]);
                 }
                 
-                BOOST_FOREACH (boost::property_tree::ptree::value_type &vtt, knowledgegraph_object)
-                {
-                    boost::property_tree::ptree vt = vtt.second;
-                    string name_kg = vt.get<string>("name");
-                    if(name_on_object == name_kg )
-                    {
-                        BOOST_FOREACH (boost::property_tree::ptree::value_type &v, vt)
-                        {
-                            if(v.second.get_value<std::string>() != name_kg)
-                            {
-                                attribute[v.first]=Json::Value(v.second.get_value<std::string>());
-                            }
-                        }
-                        object["attribute"] = attribute;
-                    }
-                }
-                
+                attribute["color"]=Json::Value(Rgb_color[name_on_object]);
+                attribute.removeMember("size");
+                attribute["size"].append(double((int)(object_V[name_on_object][0]*1000+0.5f)/1000.0));
+                attribute["size"].append(double((int)(object_V[name_on_object][1]*1000+0.5f)/1000.0));
+                attribute["size"].append(double((int)(object_V[name_on_object][2]*1000+0.5f)/1000.0));
+
+                object["attribute"] = attribute;
 
                 Scene["object"].append(object);
             }
@@ -1087,6 +1060,23 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
             Rgb_color.insert(std::map<string,string>::value_type(pose_name,pose_color));
         else if(Rgb_color.count(pose_name) > 0)
             Rgb_color[pose_name]=pose_color;
+
+        cv::putText(image, "color", cv::Point(pose_d[0]+10,pose_d[1]+add), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(r, g, b), 0.5, 8, 0);
+        cv::putText(image, ":", cv::Point(pose_d[0]+70,pose_d[1]+add), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(r, g, b), 0.5, 8, 0);
+        cv::putText(image, pose_color, cv::Point(pose_d[0]+80,pose_d[1]+add), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(r, g, b), 0.5, 8, 0);
+
+        add = add+15; 
+        r=255*abs(r-255);
+        g=255*abs(g-255);
+        b=255*abs(b-255);
+        ssss.clear();
+        ssss << float((int)(object_V_local[pose_name][0]*1000+0.5f)/1000.0) << "," 
+            << float((int)(object_V_local[pose_name][1]*1000+0.5f)/1000.0) << "," 
+            << float((int)(object_V_local[pose_name][2]*1000+0.5f)/1000.0);
+        cv::putText(image, "size", cv::Point(pose_d[0]+10,pose_d[1]+add), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(r, g, b), 0.5, 8, 0);
+        cv::putText(image, ":", cv::Point(pose_d[0]+70,pose_d[1]+add), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(r, g, b), 0.5, 8, 0);
+        cv::putText(image, ssss.str(), cv::Point(pose_d[0]+80,pose_d[1]+add), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(r, g, b), 0.5, 8, 0);
+           
 
         BOOST_FOREACH (boost::property_tree::ptree::value_type &vtt, knowledgegraph_object)
         {

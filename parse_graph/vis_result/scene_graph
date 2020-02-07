@@ -5,7 +5,7 @@ digraph structs {
 	regularchair_0 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	addresschair_0 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	relationchair_0 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	attribute_pose_chair_0 [label="(2.4,-0.3,0.3)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_pose_chair_0 [label="(0.8,0.8,0.0)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
 	attribute_color_chair_0 [label=black fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
 	structconference -> structchair_0
 	structchair_0 -> regularchair_0
@@ -17,31 +17,31 @@ digraph structs {
 	regularchair_1 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	addresschair_1 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	relationchair_1 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	attribute_pose_chair_1 [label="(2.4,-0.1,0.4)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	attribute_color_chair_1 [label=blue fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_pose_chair_1 [label="(2.4,-0.2,0.3)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_color_chair_1 [label=black fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
 	structconference -> structchair_1
 	structchair_1 -> regularchair_1
 	structchair_1 -> addresschair_1
 	regularchair_1 -> attribute_pose_chair_1
 	regularchair_1 -> attribute_color_chair_1
 	addresschair_1 -> relationchair_1
-	structchair_11 [label=chair_11 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	regularchair_11 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	addresschair_11 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	relationchair_11 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	attribute_pose_chair_11 [label="(1.3,-2.4,0.3)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	attribute_color_chair_11 [label=blue fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	structconference -> structchair_11
-	structchair_11 -> regularchair_11
-	structchair_11 -> addresschair_11
-	regularchair_11 -> attribute_pose_chair_11
-	regularchair_11 -> attribute_color_chair_11
-	addresschair_11 -> relationchair_11
+	structchair_12 [label=chair_12 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	regularchair_12 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	addresschair_12 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	relationchair_12 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	attribute_pose_chair_12 [label="(1.3,-2.6,0.4)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_color_chair_12 [label=green fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	structconference -> structchair_12
+	structchair_12 -> regularchair_12
+	structchair_12 -> addresschair_12
+	regularchair_12 -> attribute_pose_chair_12
+	regularchair_12 -> attribute_color_chair_12
+	addresschair_12 -> relationchair_12
 	structchair_14 [label=chair_14 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	regularchair_14 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	addresschair_14 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	relationchair_14 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	attribute_pose_chair_14 [label="(0.8,0.8,0.0)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_pose_chair_14 [label="(0.6,-1.8,-0.0)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
 	attribute_color_chair_14 [label=black fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
 	structconference -> structchair_14
 	structchair_14 -> regularchair_14
@@ -49,35 +49,35 @@ digraph structs {
 	regularchair_14 -> attribute_pose_chair_14
 	regularchair_14 -> attribute_color_chair_14
 	addresschair_14 -> relationchair_14
-	structchair_6 [label=chair_6 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	regularchair_6 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	addresschair_6 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	relationchair_6 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	attribute_pose_chair_6 [label="(0.6,-1.7,-0.1)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	attribute_color_chair_6 [label=blue fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	structconference -> structchair_6
-	structchair_6 -> regularchair_6
-	structchair_6 -> addresschair_6
-	regularchair_6 -> attribute_pose_chair_6
-	regularchair_6 -> attribute_color_chair_6
-	addresschair_6 -> relationchair_6
-	structchair_9 [label=chair_9 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	regularchair_9 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	addresschair_9 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	relationchair_9 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	attribute_pose_chair_9 [label="(0.6,-1.8,-0.0)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	attribute_color_chair_9 [label=black fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	structconference -> structchair_9
-	structchair_9 -> regularchair_9
-	structchair_9 -> addresschair_9
-	regularchair_9 -> attribute_pose_chair_9
-	regularchair_9 -> attribute_color_chair_9
-	addresschair_9 -> relationchair_9
+	structchair_16 [label=chair_16 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	regularchair_16 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	addresschair_16 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	relationchair_16 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	attribute_pose_chair_16 [label="(-0.4,-1.1,-0.3)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_color_chair_16 [label=white fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	structconference -> structchair_16
+	structchair_16 -> regularchair_16
+	structchair_16 -> addresschair_16
+	regularchair_16 -> attribute_pose_chair_16
+	regularchair_16 -> attribute_color_chair_16
+	addresschair_16 -> relationchair_16
+	structchair_22 [label=chair_22 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	regularchair_22 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	addresschair_22 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	relationchair_22 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	attribute_pose_chair_22 [label="(2.2,-0.2,0.3)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_color_chair_22 [label=blue fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	structconference -> structchair_22
+	structchair_22 -> regularchair_22
+	structchair_22 -> addresschair_22
+	regularchair_22 -> attribute_pose_chair_22
+	regularchair_22 -> attribute_color_chair_22
+	addresschair_22 -> relationchair_22
 	structcup_0 [label=cup_0 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	regularcup_0 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	addresscup_0 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	relationcup_0 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	attribute_pose_cup_0 [label="(1.1,0.3,0.1)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_pose_cup_0 [label="(1.1,0.2,0.1)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
 	attribute_color_cup_0 [label=white fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
 	structconference -> structcup_0
 	structcup_0 -> regularcup_0
@@ -85,18 +85,18 @@ digraph structs {
 	regularcup_0 -> attribute_pose_cup_0
 	regularcup_0 -> attribute_color_cup_0
 	addresscup_0 -> relationcup_0
-	structcup_5 [label=cup_5 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	regularcup_5 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	addresscup_5 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	relationcup_5 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	attribute_pose_cup_5 [label="(0.8,-0.1,0.2)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	attribute_color_cup_5 [label=black fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	structconference -> structcup_5
-	structcup_5 -> regularcup_5
-	structcup_5 -> addresscup_5
-	regularcup_5 -> attribute_pose_cup_5
-	regularcup_5 -> attribute_color_cup_5
-	addresscup_5 -> relationcup_5
+	structcup_4 [label=cup_4 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	regularcup_4 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	addresscup_4 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	relationcup_4 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	attribute_pose_cup_4 [label="(0.8,-0.1,0.2)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_color_cup_4 [label=black fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	structconference -> structcup_4
+	structcup_4 -> regularcup_4
+	structcup_4 -> addresscup_4
+	regularcup_4 -> attribute_pose_cup_4
+	regularcup_4 -> attribute_color_cup_4
+	addresscup_4 -> relationcup_4
 	structdesk_1 [label=desk_1 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	regulardesk_1 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	addressdesk_1 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
@@ -109,97 +109,121 @@ digraph structs {
 	regulardesk_1 -> attribute_pose_desk_1
 	regulardesk_1 -> attribute_color_desk_1
 	addressdesk_1 -> relationdesk_1
-	structmouse_1 [label=mouse_1 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	regularmouse_1 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	addressmouse_1 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	relationmouse_1 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	attribute_pose_mouse_1 [label="(0.3,-0.5,0.1)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	attribute_color_mouse_1 [label=blue fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	structconference -> structmouse_1
-	structmouse_1 -> regularmouse_1
-	structmouse_1 -> addressmouse_1
-	regularmouse_1 -> attribute_pose_mouse_1
-	regularmouse_1 -> attribute_color_mouse_1
-	addressmouse_1 -> relationmouse_1
-	structtvmonitor_1 [label=tvmonitor_1 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	regulartvmonitor_1 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	addresstvmonitor_1 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	relationtvmonitor_1 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	attribute_pose_tvmonitor_1 [label="(4.2,-3.4,1.4)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	attribute_color_tvmonitor_1 [label=black fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	structconference -> structtvmonitor_1
-	structtvmonitor_1 -> regulartvmonitor_1
-	structtvmonitor_1 -> addresstvmonitor_1
-	regulartvmonitor_1 -> attribute_pose_tvmonitor_1
-	regulartvmonitor_1 -> attribute_color_tvmonitor_1
-	addresstvmonitor_1 -> relationtvmonitor_1
+	structmouse_0 [label=mouse_0 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	regularmouse_0 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	addressmouse_0 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	relationmouse_0 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	attribute_pose_mouse_0 [label="(0.3,-0.5,0.1)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_color_mouse_0 [label=black fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	structconference -> structmouse_0
+	structmouse_0 -> regularmouse_0
+	structmouse_0 -> addressmouse_0
+	regularmouse_0 -> attribute_pose_mouse_0
+	regularmouse_0 -> attribute_color_mouse_0
+	addressmouse_0 -> relationmouse_0
+	structremote_0 [label=remote_0 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	regularremote_0 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	addressremote_0 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	relationremote_0 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	attribute_pose_remote_0 [label="(0.3,-0.1,-0.0)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_color_remote_0 [label=white fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	structconference -> structremote_0
+	structremote_0 -> regularremote_0
+	structremote_0 -> addressremote_0
+	regularremote_0 -> attribute_pose_remote_0
+	regularremote_0 -> attribute_color_remote_0
+	addressremote_0 -> relationremote_0
+	structtvmonitor_0 [label=tvmonitor_0 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	regulartvmonitor_0 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	addresstvmonitor_0 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	relationtvmonitor_0 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	attribute_pose_tvmonitor_0 [label="(3.5,-2.6,1.2)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_color_tvmonitor_0 [label=black fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	structconference -> structtvmonitor_0
+	structtvmonitor_0 -> regulartvmonitor_0
+	structtvmonitor_0 -> addresstvmonitor_0
+	regulartvmonitor_0 -> attribute_pose_tvmonitor_0
+	regulartvmonitor_0 -> attribute_color_tvmonitor_0
+	addresstvmonitor_0 -> relationtvmonitor_0
 	structoffice [label=office fillcolor="#00ffff" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	struct_scene -> structoffice
-	structbook_5 [label=book_5 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	regularbook_5 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	addressbook_5 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	relationbook_5 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	attribute_pose_book_5 [label="(3.7,1.0,0.6)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	attribute_color_book_5 [label=black fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	structoffice -> structbook_5
-	structbook_5 -> regularbook_5
-	structbook_5 -> addressbook_5
-	regularbook_5 -> attribute_pose_book_5
-	regularbook_5 -> attribute_color_book_5
-	addressbook_5 -> relationbook_5
+	structbook_0 [label=book_0 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	regularbook_0 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	addressbook_0 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	relationbook_0 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	attribute_pose_book_0 [label="(3.7,1.0,0.6)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_color_book_0 [label=black fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	structoffice -> structbook_0
+	structbook_0 -> regularbook_0
+	structbook_0 -> addressbook_0
+	regularbook_0 -> attribute_pose_book_0
+	regularbook_0 -> attribute_color_book_0
+	addressbook_0 -> relationbook_0
+	structbook_1 [label=book_1 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	regularbook_1 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	addressbook_1 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	relationbook_1 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	attribute_pose_book_1 [label="(3.6,1.1,0.6)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_color_book_1 [label=black fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	structoffice -> structbook_1
+	structbook_1 -> regularbook_1
+	structbook_1 -> addressbook_1
+	regularbook_1 -> attribute_pose_book_1
+	regularbook_1 -> attribute_color_book_1
+	addressbook_1 -> relationbook_1
+	structbottle_0 [label=bottle_0 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	regularbottle_0 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	addressbottle_0 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	relationbottle_0 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	attribute_pose_bottle_0 [label="(2.4,4.3,0.1)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_color_bottle_0 [label=white fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	structoffice -> structbottle_0
+	structbottle_0 -> regularbottle_0
+	structbottle_0 -> addressbottle_0
+	regularbottle_0 -> attribute_pose_bottle_0
+	regularbottle_0 -> attribute_color_bottle_0
+	addressbottle_0 -> relationbottle_0
+	structbottle_1 [label=bottle_1 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	regularbottle_1 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	addressbottle_1 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	relationbottle_1 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	attribute_pose_bottle_1 [label="(2.5,4.5,0.1)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_color_bottle_1 [label=white fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	structoffice -> structbottle_1
+	structbottle_1 -> regularbottle_1
+	structbottle_1 -> addressbottle_1
+	regularbottle_1 -> attribute_pose_bottle_1
+	regularbottle_1 -> attribute_color_bottle_1
+	addressbottle_1 -> relationbottle_1
 	structbottle_2 [label=bottle_2 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	regularbottle_2 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	addressbottle_2 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	relationbottle_2 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	attribute_pose_bottle_2 [label="(2.4,4.3,0.1)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	attribute_color_bottle_2 [label=white fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_pose_bottle_2 [label="(2.1,4.1,0.1)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_color_bottle_2 [label=black fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
 	structoffice -> structbottle_2
 	structbottle_2 -> regularbottle_2
 	structbottle_2 -> addressbottle_2
 	regularbottle_2 -> attribute_pose_bottle_2
 	regularbottle_2 -> attribute_color_bottle_2
 	addressbottle_2 -> relationbottle_2
-	structbottle_3 [label=bottle_3 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	regularbottle_3 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	addressbottle_3 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	relationbottle_3 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	attribute_pose_bottle_3 [label="(2.2,4.2,0.1)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	attribute_color_bottle_3 [label=black fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	structoffice -> structbottle_3
-	structbottle_3 -> regularbottle_3
-	structbottle_3 -> addressbottle_3
-	regularbottle_3 -> attribute_pose_bottle_3
-	regularbottle_3 -> attribute_color_bottle_3
-	addressbottle_3 -> relationbottle_3
-	structbottle_7 [label=bottle_7 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	regularbottle_7 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	addressbottle_7 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	relationbottle_7 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	attribute_pose_bottle_7 [label="(2.5,4.5,0.1)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	attribute_color_bottle_7 [label=white fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	structoffice -> structbottle_7
-	structbottle_7 -> regularbottle_7
-	structbottle_7 -> addressbottle_7
-	regularbottle_7 -> attribute_pose_bottle_7
-	regularbottle_7 -> attribute_color_bottle_7
-	addressbottle_7 -> relationbottle_7
-	structbottle_8 [label=bottle_8 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	regularbottle_8 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	addressbottle_8 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	relationbottle_8 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	attribute_pose_bottle_8 [label="(1.8,2.4,0.6)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	attribute_color_bottle_8 [label=green fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	structoffice -> structbottle_8
-	structbottle_8 -> regularbottle_8
-	structbottle_8 -> addressbottle_8
-	regularbottle_8 -> attribute_pose_bottle_8
-	regularbottle_8 -> attribute_color_bottle_8
-	addressbottle_8 -> relationbottle_8
+	structbottle_4 [label=bottle_4 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	regularbottle_4 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	addressbottle_4 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	relationbottle_4 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	attribute_pose_bottle_4 [label="(1.8,2.3,0.5)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_color_bottle_4 [label=black fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	structoffice -> structbottle_4
+	structbottle_4 -> regularbottle_4
+	structbottle_4 -> addressbottle_4
+	regularbottle_4 -> attribute_pose_bottle_4
+	regularbottle_4 -> attribute_color_bottle_4
+	addressbottle_4 -> relationbottle_4
 	structcabinet [label=cabinet fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	regularcabinet [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	addresscabinet [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	relationcabinet [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	attribute_pose_cabinet [label="(1.6,2.8,0.8)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_pose_cabinet [label="(1.5,2.7,0.8)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
 	attribute_color_cabinet [label=white fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
 	structoffice -> structcabinet
 	structcabinet -> regularcabinet
@@ -207,66 +231,66 @@ digraph structs {
 	regularcabinet -> attribute_pose_cabinet
 	regularcabinet -> attribute_color_cabinet
 	addresscabinet -> relationcabinet
-	structchair_21 [label=chair_21 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	regularchair_21 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	addresschair_21 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	relationchair_21 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	attribute_pose_chair_21 [label="(3.7,6.5,0.4)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	attribute_color_chair_21 [label=white fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	structoffice -> structchair_21
-	structchair_21 -> regularchair_21
-	structchair_21 -> addresschair_21
-	regularchair_21 -> attribute_pose_chair_21
-	regularchair_21 -> attribute_color_chair_21
-	addresschair_21 -> relationchair_21
-	structchair_22 [label=chair_22 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	regularchair_22 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	addresschair_22 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	relationchair_22 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	attribute_pose_chair_22 [label="(5.1,4.4,0.2)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	attribute_color_chair_22 [label=black fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	structoffice -> structchair_22
-	structchair_22 -> regularchair_22
-	structchair_22 -> addresschair_22
-	regularchair_22 -> attribute_pose_chair_22
-	regularchair_22 -> attribute_color_chair_22
-	addresschair_22 -> relationchair_22
-	structchair_23 [label=chair_23 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	regularchair_23 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	addresschair_23 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	relationchair_23 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	attribute_pose_chair_23 [label="(1.4,3.5,0.1)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	attribute_color_chair_23 [label=black fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	structoffice -> structchair_23
-	structchair_23 -> regularchair_23
-	structchair_23 -> addresschair_23
-	regularchair_23 -> attribute_pose_chair_23
-	regularchair_23 -> attribute_color_chair_23
-	addresschair_23 -> relationchair_23
+	structchair_33 [label=chair_33 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	regularchair_33 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	addresschair_33 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	relationchair_33 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	attribute_pose_chair_33 [label="(3.7,6.5,0.4)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_color_chair_33 [label=white fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	structoffice -> structchair_33
+	structchair_33 -> regularchair_33
+	structchair_33 -> addresschair_33
+	regularchair_33 -> attribute_pose_chair_33
+	regularchair_33 -> attribute_color_chair_33
+	addresschair_33 -> relationchair_33
+	structchair_34 [label=chair_34 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	regularchair_34 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	addresschair_34 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	relationchair_34 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	attribute_pose_chair_34 [label="(5.1,4.4,0.3)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_color_chair_34 [label=black fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	structoffice -> structchair_34
+	structchair_34 -> regularchair_34
+	structchair_34 -> addresschair_34
+	regularchair_34 -> attribute_pose_chair_34
+	regularchair_34 -> attribute_color_chair_34
+	addresschair_34 -> relationchair_34
+	structchair_36 [label=chair_36 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	regularchair_36 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	addresschair_36 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	relationchair_36 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	attribute_pose_chair_36 [label="(1.4,3.5,0.1)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_color_chair_36 [label=black fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	structoffice -> structchair_36
+	structchair_36 -> regularchair_36
+	structchair_36 -> addresschair_36
+	regularchair_36 -> attribute_pose_chair_36
+	regularchair_36 -> attribute_color_chair_36
+	addresschair_36 -> relationchair_36
 	structcup_11 [label=cup_11 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	regularcup_11 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	addresscup_11 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	relationcup_11 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	attribute_pose_cup_11 [label="(4.6,5.5,0.4)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	attribute_color_cup_11 [label=white fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_pose_cup_11 [label="(2.0,4.2,0.1)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_color_cup_11 [label=black fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
 	structoffice -> structcup_11
 	structcup_11 -> regularcup_11
 	structcup_11 -> addresscup_11
 	regularcup_11 -> attribute_pose_cup_11
 	regularcup_11 -> attribute_color_cup_11
 	addresscup_11 -> relationcup_11
-	structcup_17 [label=cup_17 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	regularcup_17 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	addresscup_17 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	relationcup_17 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	attribute_pose_cup_17 [label="(2.0,4.2,0.1)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	attribute_color_cup_17 [label=black fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	structoffice -> structcup_17
-	structcup_17 -> regularcup_17
-	structcup_17 -> addresscup_17
-	regularcup_17 -> attribute_pose_cup_17
-	regularcup_17 -> attribute_color_cup_17
-	addresscup_17 -> relationcup_17
+	structcup_9 [label=cup_9 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	regularcup_9 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	addresscup_9 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	relationcup_9 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	attribute_pose_cup_9 [label="(4.6,5.5,0.4)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_color_cup_9 [label=white fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	structoffice -> structcup_9
+	structcup_9 -> regularcup_9
+	structcup_9 -> addresscup_9
+	regularcup_9 -> attribute_pose_cup_9
+	regularcup_9 -> attribute_color_cup_9
+	addresscup_9 -> relationcup_9
 	structdesk_0 [label=desk_0 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	regulardesk_0 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	addressdesk_0 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
@@ -303,35 +327,35 @@ digraph structs {
 	regulardesk_4 -> attribute_pose_desk_4
 	regulardesk_4 -> attribute_color_desk_4
 	addressdesk_4 -> relationdesk_4
-	structkeyboard_1 [label=keyboard_1 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	regularkeyboard_1 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	addresskeyboard_1 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	relationkeyboard_1 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	attribute_pose_keyboard_1 [label="(4.4,2.9,0.1)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	attribute_color_keyboard_1 [label=blue fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	structoffice -> structkeyboard_1
-	structkeyboard_1 -> regularkeyboard_1
-	structkeyboard_1 -> addresskeyboard_1
-	regularkeyboard_1 -> attribute_pose_keyboard_1
-	regularkeyboard_1 -> attribute_color_keyboard_1
-	addresskeyboard_1 -> relationkeyboard_1
-	structmouse_3 [label=mouse_3 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	regularmouse_3 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	addressmouse_3 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	relationmouse_3 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	attribute_pose_mouse_3 [label="(4.3,2.7,0.3)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	attribute_color_mouse_3 [label=black fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	structoffice -> structmouse_3
-	structmouse_3 -> regularmouse_3
-	structmouse_3 -> addressmouse_3
-	regularmouse_3 -> attribute_pose_mouse_3
-	regularmouse_3 -> attribute_color_mouse_3
-	addressmouse_3 -> relationmouse_3
+	structkeyboard_0 [label=keyboard_0 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	regularkeyboard_0 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	addresskeyboard_0 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	relationkeyboard_0 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	attribute_pose_keyboard_0 [label="(4.4,2.9,0.1)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_color_keyboard_0 [label=black fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	structoffice -> structkeyboard_0
+	structkeyboard_0 -> regularkeyboard_0
+	structkeyboard_0 -> addresskeyboard_0
+	regularkeyboard_0 -> attribute_pose_keyboard_0
+	regularkeyboard_0 -> attribute_color_keyboard_0
+	addresskeyboard_0 -> relationkeyboard_0
+	structmouse_1 [label=mouse_1 fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	regularmouse_1 [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	addressmouse_1 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	relationmouse_1 [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
+	attribute_pose_mouse_1 [label="(4.3,2.7,0.3)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_color_mouse_1 [label=green fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	structoffice -> structmouse_1
+	structmouse_1 -> regularmouse_1
+	structmouse_1 -> addressmouse_1
+	regularmouse_1 -> attribute_pose_mouse_1
+	regularmouse_1 -> attribute_color_mouse_1
+	addressmouse_1 -> relationmouse_1
 	structsofa [label=sofa fillcolor="#ec5d57" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	regularsofa [label=regular fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	addresssofa [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
 	relationsofa [label=address fillcolor="#ffa000" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled,rounded" width=0.11]
-	attribute_pose_sofa [label="(1.6,5.8,0.2)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	attribute_pose_sofa [label="(1.5,5.8,0.2)" fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
 	attribute_color_sofa [label=white fillcolor="#51a7fa" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
 	structoffice -> structsofa
 	structsofa -> regularsofa
@@ -339,40 +363,46 @@ digraph structs {
 	regularsofa -> attribute_pose_sofa
 	regularsofa -> attribute_color_sofa
 	addresssofa -> relationsofa
+	relbottle_0desk_4 [label=on fillcolor="#70bf40" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	relationbottle_0 -> relbottle_0desk_4
+	relbottle_0desk_4 -> relationdesk_4 [constraint=false]
+	relbottle_1desk_4 [label=on fillcolor="#70bf40" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	relationbottle_1 -> relbottle_1desk_4
+	relbottle_1desk_4 -> relationdesk_4 [constraint=false]
 	relbottle_2desk_4 [label=on fillcolor="#70bf40" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
 	relationbottle_2 -> relbottle_2desk_4
 	relbottle_2desk_4 -> relationdesk_4 [constraint=false]
-	relbottle_3desk_4 [label=on fillcolor="#70bf40" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	relationbottle_3 -> relbottle_3desk_4
-	relbottle_3desk_4 -> relationdesk_4 [constraint=false]
-	relbottle_7desk_4 [label=on fillcolor="#70bf40" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	relationbottle_7 -> relbottle_7desk_4
-	relbottle_7desk_4 -> relationdesk_4 [constraint=false]
 	relcup_0desk_1 [label=on fillcolor="#70bf40" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
 	relationcup_0 -> relcup_0desk_1
 	relcup_0desk_1 -> relationdesk_1 [constraint=false]
-	relcup_11desk_2 [label=on fillcolor="#70bf40" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	relationcup_11 -> relcup_11desk_2
-	relcup_11desk_2 -> relationdesk_2 [constraint=false]
-	relcup_17desk_4 [label=on fillcolor="#70bf40" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	relationcup_17 -> relcup_17desk_4
-	relcup_17desk_4 -> relationdesk_4 [constraint=false]
-	relcup_5desk_1 [label=on fillcolor="#70bf40" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	relationcup_5 -> relcup_5desk_1
-	relcup_5desk_1 -> relationdesk_1 [constraint=false]
-	relkeyboard_1desk_0 [label=on fillcolor="#70bf40" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	relationkeyboard_1 -> relkeyboard_1desk_0
-	relkeyboard_1desk_0 -> relationdesk_0 [constraint=false]
-	relmouse_1desk_1 [label=on fillcolor="#70bf40" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	relationmouse_1 -> relmouse_1desk_1
-	relmouse_1desk_1 -> relationdesk_1 [constraint=false]
-	relmouse_3desk_0 [label=on fillcolor="#70bf40" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	relationmouse_3 -> relmouse_3desk_0
-	relmouse_3desk_0 -> relationdesk_0 [constraint=false]
-	relbook_5cabinet [label=in fillcolor="#70bf40" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	relationbook_5 -> relbook_5cabinet
-	relbook_5cabinet -> relationcabinet [constraint=false]
-	relbottle_8cabinet [label=in fillcolor="#70bf40" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
-	relationbottle_8 -> relbottle_8cabinet
-	relbottle_8cabinet -> relationcabinet [constraint=false]
+	relcup_11desk_4 [label=on fillcolor="#70bf40" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	relationcup_11 -> relcup_11desk_4
+	relcup_11desk_4 -> relationdesk_4 [constraint=false]
+	relcup_4desk_1 [label=on fillcolor="#70bf40" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	relationcup_4 -> relcup_4desk_1
+	relcup_4desk_1 -> relationdesk_1 [constraint=false]
+	relcup_9desk_2 [label=on fillcolor="#70bf40" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	relationcup_9 -> relcup_9desk_2
+	relcup_9desk_2 -> relationdesk_2 [constraint=false]
+	relkeyboard_0desk_0 [label=on fillcolor="#70bf40" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	relationkeyboard_0 -> relkeyboard_0desk_0
+	relkeyboard_0desk_0 -> relationdesk_0 [constraint=false]
+	relmouse_0desk_1 [label=on fillcolor="#70bf40" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	relationmouse_0 -> relmouse_0desk_1
+	relmouse_0desk_1 -> relationdesk_1 [constraint=false]
+	relmouse_1desk_0 [label=on fillcolor="#70bf40" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	relationmouse_1 -> relmouse_1desk_0
+	relmouse_1desk_0 -> relationdesk_0 [constraint=false]
+	relremote_0desk_1 [label=on fillcolor="#70bf40" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	relationremote_0 -> relremote_0desk_1
+	relremote_0desk_1 -> relationdesk_1 [constraint=false]
+	relbook_0cabinet [label=in fillcolor="#70bf40" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	relationbook_0 -> relbook_0cabinet
+	relbook_0cabinet -> relationcabinet [constraint=false]
+	relbook_1cabinet [label=in fillcolor="#70bf40" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	relationbook_1 -> relbook_1cabinet
+	relbook_1cabinet -> relationcabinet [constraint=false]
+	relbottle_4cabinet [label=in fillcolor="#70bf40" fontcolor=black height=0 margin="0.11, 0.0001" shape=box style="filled, rounded" width=0.11]
+	relationbottle_4 -> relbottle_4cabinet
+	relbottle_4cabinet -> relationcabinet [constraint=false]
 }
