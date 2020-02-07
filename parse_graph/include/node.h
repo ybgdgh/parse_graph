@@ -55,6 +55,8 @@
 #include "draw.h"
 #include "map_compute.h"
 
+// 调用python
+#include <python2.7/Python.h>
 
 using namespace std;
 using namespace Eigen;
@@ -70,7 +72,7 @@ class Parse_Node
 
     void darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg);
 
-    void mask_rcnn_Callback(const mask_rcnn_ros::Result& mask_msg);
+    // void mask_rcnn_Callback(const mask_rcnn_ros::Result& mask_msg);
 
     void CameraInfo(const sensor_msgs::CameraInfo& camera);
 
@@ -125,6 +127,7 @@ class Parse_Node
     std::map<string,Vector3d> On_box_local;
 
     std::map<string,Vector9d> Scene_box;    
+    std::map<string,string> Rgb_color;    
 
     // record object's 3d pose
     std::map<string,Vector3d> object_xyz;
@@ -136,7 +139,7 @@ class Parse_Node
 
     // record the probability of the object
     std::map<string,float> object_P;
-    
+
 
     // recoord maks rcnn result class and Bbox
     map<string,Vector6d> mask_class_point3d;
@@ -176,7 +179,12 @@ class Parse_Node
     int KFG_Number;
 
     
-
+    // 调用python接口
+    PyObject *pModule = NULL;
+    PyObject *pFunc_scene = NULL;
+    PyObject *pFunc_node = NULL;
+    PyObject *pFunc_rela = NULL;
+    PyObject *pFunc_viz = NULL;
        
 
  

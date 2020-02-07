@@ -9,6 +9,66 @@
 #include "node.h"
 
 bool Base_Flag,Scannet_Flag;
+string Yolo_Base[10] = { 
+                        "cup",
+                        "mouse",
+                        "chair",
+                        "tvmonitor",
+                        "keyboard",
+                        "bottle",
+                        "book",
+                        "bowl",
+                        "phone",
+                        "remote"
+                    };
+
+
+// 计算坐标对应的color
+string compute_color(cv::Mat img_pg, int x, int y)
+{
+    Scalar p = img_pg.at<Vec3b>(x, y);
+    string color;
+    bool b_color = p[0]>127 ? true:false;
+    bool g_color = p[1]>127 ? true:false;
+    bool r_color = p[2]>127 ? true:false;
+
+    if(!b_color && !g_color && !r_color)
+    {
+        color = "black";
+    }
+    else if(!b_color && !g_color && r_color)
+    {
+        color = "red";
+    }
+    else if(!b_color && g_color && !r_color)
+    {
+        color = "blue";
+    }
+    else if(b_color && !g_color && !r_color)
+    {
+        color = "green";
+    }
+    else if(!b_color && g_color && r_color)
+    {
+        color = "yellow";
+    }
+    else if(b_color && !g_color && r_color)
+    {
+        color = "purple";
+    }
+    else if(b_color && g_color && !r_color)
+    {
+        color = "Indigo";
+    }
+    else if(b_color && g_color && r_color)
+    {
+        color = "white";
+    }
+
+    return color;
+
+}
+
 
 Parse_Node::Parse_Node(ros::NodeHandle nh,ros::NodeHandle np)
 :nh_(nh),
@@ -20,7 +80,7 @@ Parse_Node::Parse_Node(ros::NodeHandle nh,ros::NodeHandle np)
     //订阅odom和激光的话题
     sub_ar_track = nh_.subscribe("tag_detections", 10, &Parse_Node::tag_detections_mark,this);
     sub_darknet = nh_.subscribe("darknet_ros/bounding_boxes", 10, &Parse_Node::darknet_Bbox,this);
-    sub_mask_rcnn = nh_.subscribe("mask_rcnn/result", 10, &Parse_Node::mask_rcnn_Callback,this);
+    // sub_mask_rcnn = nh_.subscribe("mask_rcnn/result", 10, &Parse_Node::mask_rcnn_Callback,this);
     sub_CameraInfo = nh_.subscribe("camera/aligned_depth_to_color/camera_info", 10, &Parse_Node::CameraInfo,this);
     sub_depth_camera = nh_.subscribe("/camera/aligned_depth_to_color/image_raw", 10, &Parse_Node::depth_Callback,this);
 
@@ -58,7 +118,31 @@ Parse_Node::Parse_Node(ros::NodeHandle nh,ros::NodeHandle np)
     KFG_AR_Active_Finish = false;
     KFG_Number = 50;
 
-    std::cout << "init finish" << std::endl;
+
+    //调用python接口
+    cout << "python init!" << endl;
+    Py_Initialize();
+    PyRun_SimpleString("import sys");
+    cout << "python initing" << endl;
+    
+    std::string dirs = std::string("sys.path.append('/home/ybg/ROS_code/catkin_vision/src/parse_graph/src/')");
+    PyRun_SimpleString(dirs.c_str());
+
+    PyObject *module = PyString_FromString("vis_pg");
+    pModule = PyImport_Import(module);      //Python文件名
+    if(!pModule) //failed
+    {
+        std::cout << "Get python module failed." << std::endl;
+        return ;
+    }
+    pFunc_scene = PyObject_GetAttrString(pModule, "add_scene"); //Python文件中的函数名
+    pFunc_node = PyObject_GetAttrString(pModule, "add_node"); //Python文件中的函数名
+    pFunc_rela = PyObject_GetAttrString(pModule, "add_rela"); //Python文件中的函数名
+    pFunc_viz = PyObject_GetAttrString(pModule, "viz_pg"); //Python文件中的函数名
+    cout << "python init finish!" << endl;
+
+
+    std::cout << "python init finish" << std::endl;
    
 }
 
@@ -229,6 +313,9 @@ Parse_Node::~Parse_Node()
     cv::imwrite("/home/ybg/pg_graph.png",pg_graph);
     cv::imwrite("/home/ybg/pg_image_show.png",pg_image_show);
 
+    // python 调用结束
+    Py_Finalize();
+
 
 }
 
@@ -284,235 +371,6 @@ void Parse_Node::Listentf(std::string tf1, std::string tf2,Eigen::Isometry3d& T)
     T.pretranslate ( trans );
 
 }
-
-void Parse_Node::mask_rcnn_Callback(const mask_rcnn_ros::Result& mask_msg)
-{
-    // cout << "mask_msg.boses: " << mask_msg.boxes.size() << endl;
-    
-        //定义机器人本体到相机之间的变换
-    Eigen::Vector3d trans_Bbox;
-    Eigen::Quaterniond quat_Bbox;
-
-    // cout << "Bound_msg : " << Bound_msg.header.frame_id << endl;
-    tf::StampedTransform transform_Bbox;
-    try
-    {
-        listener.lookupTransform("/map", "/camera",ros::Time(0), transform_Bbox);
-    }
-    catch(tf::TransformException e)
-    {
-        ROS_WARN("Failed to compute dark pose, skipping scan (%s)", e.what());
-        ros::Duration(1.0).sleep();
-        return ;
-    }
-    trans_Bbox << transform_Bbox.getOrigin().x(),transform_Bbox.getOrigin().y(),transform_Bbox.getOrigin().z();
-
-    // cout << "trans : " << trans_Bbox << endl;
-
-    quat_Bbox.w() = transform_Bbox.getRotation().getW();
-    quat_Bbox.x() = transform_Bbox.getRotation().getX();
-    quat_Bbox.y() = transform_Bbox.getRotation().getY();
-    quat_Bbox.z() = transform_Bbox.getRotation().getZ();
-
-    Eigen::Isometry3d T_base_to_camera = Eigen::Isometry3d::Identity();
-    T_base_to_camera = Eigen::Isometry3d::Identity();
-    T_base_to_camera.rotate ( quat_Bbox );
-    T_base_to_camera.pretranslate ( trans_Bbox );
-    
-    std::vector<std::tuple<string,Vector3d,Vector3d>> KFG_active_oneimage;
-    object_2d_pose.clear();
-    
-    for(int i=0; i<mask_msg.boxes.size();i++)
-    {
-        cout << mask_msg.class_names[i] << ":" << mask_msg.scores[i] << "," << mask_msg.boxes[i].x_offset << "," << mask_msg.boxes[i].y_offset << "," << mask_msg.boxes[i].height << "," << mask_msg.boxes[i].width << endl;
-        string mask_name = mask_msg.class_names[i];
-        float mask_score = mask_msg.scores[i];
-        Vector4d mask_Bbox = Vector4d(mask_msg.boxes[i].x_offset,mask_msg.boxes[i].y_offset,mask_msg.boxes[i].height,mask_msg.boxes[i].width);
-
-        std::tuple<string,Vector3d,Vector3d> KFG_active_oneobject;
-   
-        int weight = mask_msg.masks[i].width;
-        int height = mask_msg.masks[i].height;
-
-        // cout << "weight : " << weight << endl;
-        // cout << "height : " << height << endl;
-        // cout << "mask_Bbox : " << mask_Bbox << endl;
-        // cout << "mask_msg.masks[i].data : " << mask_msg.masks[i].data.size() << endl;
-
-        // 遍历图像的bbox区域，找到mask位置
-        int mask_num=0;
-        Vector6d Space_Bbox = Vector6d::Zero();
-        bool first_flag=false;
-        for(int k=mask_Bbox[0];k<mask_Bbox[0]+mask_Bbox[2];k=k+max(int(mask_Bbox[2]/10.0),1))
-            for(int l=mask_Bbox[1];l<mask_Bbox[1]+mask_Bbox[3];l=l+max(int(mask_Bbox[3]/10.0),1))
-            {
-                // cout << int(mask_msg.masks[i].data[l*weight+k]);
-                if(int(mask_msg.masks[i].data[l*weight+k]) == 255)
-                {
-                    mask_num++;
-                    double mask_depth_c = depth_pic.ptr<float>(l)[k]/1000.0;
-                    double y_c = (k - cy) * mask_depth_c / fy;
-                    double x_c = (l - cx) * mask_depth_c / fx;
-
-                    Vector3d point3d(x_c,y_c,mask_depth_c);
-                    Vector3d M_point3d = T_base_to_camera * point3d;
-
-                    // 判断边框
-                    if(!first_flag)
-                    {
-                        first_flag=true;
-                        Space_Bbox << M_point3d[0],M_point3d[1],M_point3d[2],M_point3d[0],M_point3d[1],M_point3d[2];
-                    }
-                    else // update Bbox
-                    {
-                        if(M_point3d[0]<Space_Bbox[0]) Space_Bbox[0]=M_point3d[0];
-                        else if(M_point3d[0]>Space_Bbox[3]) Space_Bbox[3]=M_point3d[0];
-
-                        if(M_point3d[1]<Space_Bbox[1]) Space_Bbox[1]=M_point3d[1];
-                        else if(M_point3d[1]>Space_Bbox[4]) Space_Bbox[4]=M_point3d[1];
-
-                        if(M_point3d[2]<Space_Bbox[2]) Space_Bbox[2]=M_point3d[2];
-                        else if(M_point3d[2]>Space_Bbox[5]) Space_Bbox[5]=M_point3d[2];
-                    }
-                }
-            }
-
-        cout << "mask_num : " << mask_num << endl;
-        cout << "Space_Bbox : " << Space_Bbox.matrix() << endl;
-       
-        // 之前无此class，则创建class类别，添加id 0
-        bool Same_flag = false;        
-        std::stringstream sss;      
-        string mask_name_id;   
-        if(class_id.count(mask_name) == 0)
-        {
-            sss.str("");
-            sss << mask_name << '_' << 0;
-            mask_name_id = sss.str();
-            cout << "first : " << mask_name_id << endl;
-            std::vector<string> class_id_first;
-            class_id_first.push_back(mask_name_id);
-            class_id.insert(std::map<string,std::vector<string>>::value_type(mask_name,class_id_first));
-            mask_class_point3d.insert(map<string, Vector6d>::value_type(mask_name_id,Space_Bbox));
-            
-        }
-        // 再有相同class的object时，首先判断是否为之前的id，若不是则push新id
-        else if(class_id.count(mask_name) > 0)
-        {
-            for(int k=0;k<class_id[mask_name].size();k++)
-            {
-                // 判断Bbox重合面积
-                string other_class_name = class_id[mask_name][k];
-
-                float x1=mask_class_point3d[other_class_name][0];
-                float y1=mask_class_point3d[other_class_name][1];
-                float z1=mask_class_point3d[other_class_name][2];
-                float x2=mask_class_point3d[other_class_name][3];
-                float y2=mask_class_point3d[other_class_name][4];
-                float z2=mask_class_point3d[other_class_name][5];
-
-                // IoU 评价是否为一个物体 交并比
-                if(x1 < Space_Bbox[3] && x2 > Space_Bbox[0] 
-                && y1 < Space_Bbox[4] && y2 > Space_Bbox[1]
-                && z1 < Space_Bbox[5] && z2 > Space_Bbox[2])
-                {
-                    // 分别求三个面的投影 max中的小值-min中的大值
-                    // x-y
-                    int delta_x = min(x2,float(Space_Bbox[3])) - max(x1,float(Space_Bbox[0]));
-                    int delta_y = min(y2,float(Space_Bbox[4])) - max(y1,float(Space_Bbox[1]));
-                    int delta_z = min(z2,float(Space_Bbox[5])) - max(z1,float(Space_Bbox[2]));
-
-                    int V_intersection = delta_x * delta_y * delta_z;
-
-                    int V_union = (x2-x1)*(y2-y1)*(z2-z1) + (Space_Bbox[3]-Space_Bbox[0])*(Space_Bbox[4]-Space_Bbox[1])*(Space_Bbox[5]-Space_Bbox[2]) - V_intersection;
-
-                    float IoU = V_intersection / float((V_union+1.0));
-
-                    cout << "V_inter :" << V_intersection << ", V_union" << V_union << ", IoU : " << IoU << endl;
-
-                    if(IoU > 0.5)
-                    {
-                        Same_flag=true;
-
-                        //update the bbox
-                        if(Space_Bbox[0] < x1)
-                            mask_class_point3d[other_class_name][0] = Space_Bbox[0];
-                        if(Space_Bbox[1] < y1)
-                            mask_class_point3d[other_class_name][1] = Space_Bbox[1];
-                        if(Space_Bbox[2] < z1)
-                            mask_class_point3d[other_class_name][2] = Space_Bbox[2];
-
-                        if(Space_Bbox[3] > x2)
-                            mask_class_point3d[other_class_name][3] = Space_Bbox[3];
-                        if(Space_Bbox[4] > y2)
-                            mask_class_point3d[other_class_name][4] = Space_Bbox[4];
-                        if(Space_Bbox[5] > z2)
-                            mask_class_point3d[other_class_name][5] = Space_Bbox[5];
-                        
-
-                        break;
-                    }
-                }
-                
-            }
-
-            if(!Same_flag)
-            {
-                sss.str("");
-                sss << mask_name << '_' << class_id[mask_name].size();
-                mask_name_id = sss.str();
-                class_id[mask_name].push_back(mask_name_id);
-                cout << "second : " << mask_name_id << endl;
-                mask_class_point3d.insert(map<string, Vector6d>::value_type(mask_name_id,Space_Bbox));
-                
-            }
-        }
-
-        Vector2d d_pose((mask_Bbox[0]+mask_Bbox[2]/2),(mask_Bbox[1]+mask_Bbox[3]/2));
-
-        if(object_2d_pose.count(mask_name_id) == 0)
-            object_2d_pose.insert(std::map<string,Vector2d>::value_type(mask_name_id,d_pose));
-
-        // add to the on_box
-        if(On_box_local.count(mask_name_id) == 0)
-        {           
-            On_box_local.insert(std::map<string,Vector3d>::value_type(mask_name_id,Vector3d((Space_Bbox[0]+Space_Bbox[3])/2,(Space_Bbox[1]+Space_Bbox[4])/2,(Space_Bbox[2]+Space_Bbox[5])/2)));
-            object_xyz_local.insert(std::map<string,Vector3d>::value_type(mask_name_id,Vector3d((Space_Bbox[0]+Space_Bbox[3])/2,(Space_Bbox[1]+Space_Bbox[4])/2,(Space_Bbox[2]+Space_Bbox[5])/2)));
-            object_V_local.insert(std::map<string,Vector3d>::value_type(mask_name_id,Vector3d(abs(Space_Bbox[0]-Space_Bbox[3]),abs(Space_Bbox[1]-Space_Bbox[4]),abs(Space_Bbox[2]-Space_Bbox[5]))));       
-            object_P.insert(std::map<string,float>::value_type(mask_name_id,mask_score));       
-        }
-        else if(On_box_local.count(mask_name_id) > 0)
-        {    
-
-            On_box_local[mask_name_id]=Vector3d((Space_Bbox[0]+Space_Bbox[3])/2,(Space_Bbox[1]+Space_Bbox[4])/2,(Space_Bbox[2]+Space_Bbox[5])/2);
-            object_xyz_local[mask_name_id]=Vector3d((Space_Bbox[0]+Space_Bbox[3])/2,(Space_Bbox[1]+Space_Bbox[4])/2,(Space_Bbox[2]+Space_Bbox[5])/2);
-            object_V_local[mask_name_id]=Vector3d(abs(Space_Bbox[0]-Space_Bbox[3]),abs(Space_Bbox[1]-Space_Bbox[4]),abs(Space_Bbox[2]-Space_Bbox[5]));
-            object_P[mask_name_id]=mask_score;                       
-        }
-
-        KFG_active_oneobject=make_tuple(mask_name_id,Vector3d((Space_Bbox[0]+Space_Bbox[3])/2,(Space_Bbox[1]+Space_Bbox[4])/2,(Space_Bbox[2]+Space_Bbox[5])/2),Vector3d(abs(Space_Bbox[0]-Space_Bbox[3]),abs(Space_Bbox[1]-Space_Bbox[4]),abs(Space_Bbox[2]-Space_Bbox[5])));
-        KFG_active_oneimage.push_back(KFG_active_oneobject);
-
-
-    }
-
-    KFG_active.push_back(KFG_active_oneimage);
-
-    // transform active to optimize
-    if(KFG_active.size() >= 50)
-    {
-        KFG_Active_Finish = true;
-        // clear KFG_optimize and insert KFG_active
-        KFG_optimize.assign(KFG_active.begin(),KFG_active.end());
-        // clear KFG_active and insert the after half of KFG_optimize
-        KFG_active.assign(KFG_optimize.begin()+KFG_Number/2,KFG_optimize.end());
-    }
-
-
-}
-
-
-
 
 
 
@@ -602,7 +460,9 @@ void Parse_Node::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
 
         string name_darknet;
         bool Same_flag=false;
-        if(ob_name == "cup" || ob_name == "mouse" || ob_name == "chair" || ob_name == "tvmonitor" || ob_name == "keyboard" || ob_name == "bottle" || ob_name == "book" || ob_name == "bowl")
+        std::vector<string> vecArr(Yolo_Base, Yolo_Base+10); 
+	    std::vector<string>::iterator ite = find(vecArr.begin(),vecArr.end(),ob_name);
+	    if(ite!=vecArr.end())
         {
             // 之前无此class，则创建class类别，添加id 0
             if(class_id.count(ob_name) == 0)
@@ -624,23 +484,30 @@ void Parse_Node::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
                 {
                     // 判断三维坐标是否一致(之间距离是否大于最大边长)
                     string other_class_name = class_id[ob_name][k];
-                    float a=object_V_local[other_class_name][0];
-                    float b=object_V_local[other_class_name][1];
-                    float c=object_V_local[other_class_name][2];
-                    float max_distance = (a>=b&&a>=c)?a:(b>=a&&b>=c)?b:c;
-                    if(abs(S_darknet_object[0]-object_xyz_local[other_class_name][0])<max_distance &&
-                        abs(S_darknet_object[1]-object_xyz_local[other_class_name][1])<max_distance &&
-                        abs(S_darknet_object[2]-object_xyz_local[other_class_name][2])<max_distance &&
-                        std::find(same_detect.begin(), same_detect.end(), other_class_name) == same_detect.end())
-                    {               
-                        distance_xyz = abs(S_darknet_object[0]-object_xyz_local[other_class_name][0])+
-                                                abs(S_darknet_object[1]-object_xyz_local[other_class_name][1]);
-                        if(distance_xyz < min_distance)
+                    if(object_V_local.count(other_class_name)>0)
+                    {
+                        float a=object_V_local[other_class_name][0];
+                        float b=object_V_local[other_class_name][1];
+                        float c=object_V_local[other_class_name][2];
+                        float max_distance = (a>=b&&a>=c)?a:(b>=a&&b>=c)?b:c;
+                        
+                        // 0.25为阈值，调整max_distance参数
+                        if(max_distance < 0.25) max_distance=max_distance*2;
+                        
+                        if(abs(S_darknet_object[0]-object_xyz_local[other_class_name][0])<max_distance &&
+                            abs(S_darknet_object[1]-object_xyz_local[other_class_name][1])<max_distance &&
+                            abs(S_darknet_object[2]-object_xyz_local[other_class_name][2])<max_distance &&
+                            std::find(same_detect.begin(), same_detect.end(), other_class_name) == same_detect.end())
                         {               
-                            min_distance = distance_xyz;
-                            name_darknet = other_class_name;  
-                            Same_flag=true;
-                            
+                            distance_xyz = abs(S_darknet_object[0]-object_xyz_local[other_class_name][0])+
+                                                    abs(S_darknet_object[1]-object_xyz_local[other_class_name][1]);
+                            if(distance_xyz < min_distance)
+                            {               
+                                min_distance = distance_xyz;
+                                name_darknet = other_class_name;  
+                                Same_flag=true;
+                                
+                            }
                         }
                     }
                     
@@ -663,7 +530,7 @@ void Parse_Node::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
             }
 
             // publish the tf of cmaera and darktag
-            Parse_Node::Publishtf(point,"camera",name_darknet);
+            Parse_Node::Publishtf(S_darknet_object,"map",name_darknet);
 
             Vector2d d_pose((Bbox[0]+Bbox[1])/2,(Bbox[2]+Bbox[3])/2);
 
@@ -676,6 +543,8 @@ void Parse_Node::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
             marker_scale[0] = (abs(x2-x1)>0?abs(x2-x1):0.01);
             marker_scale[1] = (min(abs(x2-x1),abs(y2-y1))>0?min(abs(x2-x1),abs(y2-y1)):0.01);
             marker_scale[2] = (abs(y2-y1)>0?abs(y2-y1):0.01);
+
+            // cout << name_darknet << ": " << marker_scale.matrix() << endl;
 
             if(On_box_local.count(name_darknet) == 0)
             {           
@@ -774,6 +643,7 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
         Vector9d S_support_object;
         Vector3d S_on_object;
         Vector3d marker_scale;
+        string Ar_color;
 
         // TV
         if(ar_marker.id[0] == 0)
@@ -799,6 +669,8 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
                         trans_object[2];   
             
             marker_scale << 1,2,1;
+
+            Ar_color = "white";
 
             support_flag = true;
         }
@@ -830,6 +702,8 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
                         trans_object[2];
 
             marker_scale << 1,2,1;
+
+            Ar_color = "yellow";            
             
             support_flag = true;
             // cout << "T_base_to_apri :" << T_base_to_apri.matrix() << endl;
@@ -840,11 +714,14 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
         {
             name = "desk_2";
 
+            Eigen::Vector3d t1(-0.2,0,0);
             Eigen::Vector3d t2(1,0,0);
-            Eigen::Vector3d t3(0,-2,0);
+            Eigen::Vector3d t3(-0.2,-2,0);
             Eigen::Vector3d t4(1,-2,0);
 
-            Eigen::Vector3d trans1(trans_object[0],trans_object[1],trans_object[2]);    
+            Eigen::Vector3d trans(trans_object[0],trans_object[1],trans_object[2]);    
+
+            Eigen::Vector3d trans1 = T_base_to_apri * t1; 
 
             Eigen::Vector3d trans2 = T_base_to_apri * t2; 
 
@@ -859,6 +736,8 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
                         trans_object[2];
 
             marker_scale << 1,2,1;
+            
+            Ar_color = "white";
             
             support_flag = true;
             
@@ -921,6 +800,8 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
 
             marker_scale << 0.5,1,1;
             
+            Ar_color = "black";
+            
             support_flag = true;
             
         }
@@ -928,11 +809,14 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
         {//chugai
             name = "cabinet";
 
+            Eigen::Vector3d t1(0.5,0,0);
             Eigen::Vector3d t2(-4,0,0);
-            Eigen::Vector3d t3(0,0,-0.5);
-            Eigen::Vector3d t4(-4,0,-0.5);
+            Eigen::Vector3d t3(0.5,0,-1);
+            Eigen::Vector3d t4(-4,0,-1);
 
-            Eigen::Vector3d trans1(trans_object[0],trans_object[1],trans_object[2]);    
+            Eigen::Vector3d trans(trans_object[0],trans_object[1],trans_object[2]);    
+
+            Eigen::Vector3d trans1 = T_base_to_apri * t1; 
 
             Eigen::Vector3d trans2 = T_base_to_apri * t2; 
 
@@ -940,6 +824,7 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
 
             Eigen::Vector3d trans4 = T_base_to_apri * t4;
 
+            Parse_Node::Publishtf(trans1,"map","cabinet_1");
             Parse_Node::Publishtf(trans2,"map","cabinet_2");
             Parse_Node::Publishtf(trans3,"map","cabinet_3");
             Parse_Node::Publishtf(trans4,"map","cabinet_4");
@@ -950,7 +835,9 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
                         trans4(0),trans4(1),
                         trans_object[2];
 
-            marker_scale << 3,0.5,3;
+            marker_scale << 4,0.5,3;
+
+            Ar_color = "white";            
             
             support_flag = true;
         }
@@ -1008,6 +895,8 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
 
             marker_scale << 2,0.5,1;
 
+            Ar_color = "white";
+            
             support_flag = true;
         }
         
@@ -1059,6 +948,7 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
             object_V.insert(std::map<string,Vector3d>::value_type(name,marker_scale));
             Scene_Relation[current_scene].push_back(name);
             if(!Base_Flag)KFG_AR_Active_Finish = true;
+            Rgb_color.insert(std::map<string,string>::value_type(name,Ar_color));
             
         }
         else if(on_flag == true)
@@ -1077,6 +967,7 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
             object_V.insert(std::map<string,Vector3d>::value_type(name,marker_scale));
             Scene_Relation[current_scene].push_back(name);            
             if(!Base_Flag)KFG_AR_Active_Finish = true;
+            Rgb_color.insert(std::map<string,string>::value_type(name,Ar_color));
             
         }
  
@@ -1189,6 +1080,13 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
 
         cv::circle(image,cv::Point(pose_d[0],pose_d[1]),10,cv::Scalar(0, 255, 0),4,8);
         cv::putText(image, ssss.str(), cv::Point(pose_d[0]+15,pose_d[1]), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2, 8);
+
+        // 计算颜色
+        string pose_color = compute_color(image, pose_d[0], pose_d[1]);
+        if(Rgb_color.count(pose_name) == 0)
+            Rgb_color.insert(std::map<string,string>::value_type(pose_name,pose_color));
+        else if(Rgb_color.count(pose_name) > 0)
+            Rgb_color[pose_name]=pose_color;
 
         BOOST_FOREACH (boost::property_tree::ptree::value_type &vtt, knowledgegraph_object)
         {
@@ -1427,7 +1325,7 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
             {
                 string KDF_name_oneclass = iter->first;
                 std::vector<std::tuple<Vector3d,Vector3d>> KDF_sum_oneclassid = iter->second;
-                if(KDF_sum_oneclassid.size()>20)
+                if(KDF_sum_oneclassid.size()>15)
                 {
                     // xyz V 求和取均值
                     Vector3d xyz_sum = Vector3d::Zero();
@@ -1573,8 +1471,80 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
         
 
 
-        
-        
+        // graphviz 
+        // 添加场景
+        for(auto iter = Scene_Relation.begin();iter != Scene_Relation.end(); iter++)
+        {
+            string scene_name = iter->first;
+            std::vector<string> simple_scene = iter->second;
+
+            PyObject *pArgs_scene = PyTuple_New(1);                 //函数调用的参数传递均是以元组的形式打包的,4表示参数个数
+            PyTuple_SetItem(pArgs_scene, 0, PyString_FromString(scene_name.c_str())); //0--序号,i表示创建int型变量
+
+            PyEval_CallObject(pFunc_scene, pArgs_scene); //调用函数
+            
+
+            // 添加节点
+            for(auto iter = object_xyz.begin();iter != object_xyz.end(); iter++)
+            {
+                string object_name = iter->first;
+                Vector3d object_xyz_ = iter->second;
+
+                if(std::find(simple_scene.begin(), simple_scene.end(), object_name) == simple_scene.end()) 
+                    continue;
+
+                //创建参数:
+                PyObject *pArgs_node = PyTuple_New(6);                 //函数调用的参数传递均是以元组的形式打包的,4表示参数个数
+                PyTuple_SetItem(pArgs_node, 0, Py_BuildValue("s", scene_name.c_str())); //0--序号,i表示创建int型变量
+                PyTuple_SetItem(pArgs_node, 1, Py_BuildValue("s", object_name.c_str())); //0--序号,i表示创建int型变量
+                PyTuple_SetItem(pArgs_node, 2, Py_BuildValue("f", double((int)(object_xyz_[0]*1000+0.5f)/1000.0))); //1--序号
+                PyTuple_SetItem(pArgs_node, 3, Py_BuildValue("f", double((int)(object_xyz_[1]*1000+0.5f)/1000.0))); //2--序号
+                PyTuple_SetItem(pArgs_node, 4, Py_BuildValue("f", double((int)(object_xyz_[2]*1000+0.5f)/1000.0))); //3--序号
+                PyTuple_SetItem(pArgs_node, 5, Py_BuildValue("s", Rgb_color[object_name].c_str())); //4--序号
+                // 无返回值
+                PyEval_CallObject(pFunc_node, pArgs_node); //调用函数
+
+            }
+
+        }
+
+        // 添加关系
+        for(auto iter = support_relationships.begin();iter != support_relationships.end(); iter++)
+        {
+            
+            std::string name_on = iter->first;
+            std::string name_support = iter->second;
+            
+            // 添加关系
+            //创建参数:
+            PyObject *pArgs_rela = PyTuple_New(3);                 //函数调用的参数传递均是以元组的形式打包的,4表示参数个数
+            PyTuple_SetItem(pArgs_rela, 0, Py_BuildValue("s", name_on.c_str())); //0--序号,i表示创建int型变量
+            PyTuple_SetItem(pArgs_rela, 1, Py_BuildValue("s", name_support.c_str())); //1--序号
+            PyTuple_SetItem(pArgs_rela, 2, Py_BuildValue("s", "on")); //2--序号
+            // 无返回值
+            PyEval_CallObject(pFunc_rela, pArgs_rela); //调用函数
+
+        }
+
+        for(auto iter = contian_relationships.begin();iter != contian_relationships.end(); iter++)
+        {
+            
+            std::string name_in = iter->first;
+            std::string name_out = iter->second;
+            
+            // 添加关系
+            //创建参数:
+            PyObject *pArgs_rela = PyTuple_New(3);                 //函数调用的参数传递均是以元组的形式打包的,4表示参数个数
+            PyTuple_SetItem(pArgs_rela, 0, Py_BuildValue("s", name_in.c_str())); //0--序号,i表示创建int型变量
+            PyTuple_SetItem(pArgs_rela, 1, Py_BuildValue("s", name_out.c_str())); //1--序号
+            PyTuple_SetItem(pArgs_rela, 2, Py_BuildValue("s", "in")); //2--序号
+            // 无返回值
+            PyEval_CallObject(pFunc_rela, pArgs_rela); //调用函数
+
+        }
+
+        // update date
+        PyEval_CallObject(pFunc_viz, NULL); 
 
 
         int rows = 600;
@@ -1703,6 +1673,9 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
     // marker_pub.publish(markerarray);
 
 }
+
+
+
 
 void Parse_Node::PublishMarker(std::map<string,Vector3d> object_V)
 {

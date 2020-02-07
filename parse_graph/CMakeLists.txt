@@ -125,12 +125,13 @@ catkin_package(
 ###########
 ## Build ##
 ###########
-
+link_directories(/usr/lib/python2.7/config-i386-linux-gnu)
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
   "/usr/include/eigen3"
   "/usr/include/jsoncpp"
+  "/user/include"
   include ${catkin_INCLUDE_DIRS}
 # include
 # ${catkin_INCLUDE_DIRS}
@@ -232,6 +233,7 @@ add_executable(parse
 add_dependencies(parse ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(parse
   jsoncpp
+  python2.7
   ${catkin_LIBRARIES}
 )
 

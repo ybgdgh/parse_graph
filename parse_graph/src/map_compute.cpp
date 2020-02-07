@@ -64,38 +64,42 @@ void Map_Compute::Compute_Object_Map(
     std::map<string,float> object_p;
     std::vector<Vector4d> object_Bbox;
 
+    // 判断一帧图像中是否出现多个同类物体
+    std::vector<string> Multi_detect;
+    
+
     for(const darknet_ros_msgs::BoundingBox& Bbox : Bound_msg.bounding_boxes)
     {
         // use relationships to adjust the probability
         // cout << Bbox.Class << " before: " << Bbox.probability << endl;
         
-        float class_p = adjust_add(Bbox.Class,Bbox.probability);
+        // float class_p = adjust_add(Bbox.Class,Bbox.probability);
+        float class_p = Bbox.probability;
 
         // cout << Bbox.Class << " after: " << class_p << endl;
         // 清楚边缘的检测
-        // if(Bbox.xmin < 10 || Bbox.xmax > 630 || Bbox.ymin < 10 || Bbox.ymax > 470)
-        //     continue;
-
+        if(Bbox.xmin < 5 || Bbox.xmax > 635 || Bbox.ymin < 5 || Bbox.ymax > 475)
+            continue;
 
         happen_flag=false;
         object_p.clear();
         // 注释即为base
-        // if(!object_Bbox.empty())
-        // {
-        //     for(int i=0;i<object_Bbox.size();i++)
-        //     {
-        //         if(Bbox.xmin == object_Bbox[i](0) && Bbox.xmax == object_Bbox[i](1) && Bbox.ymin == object_Bbox[i](2) && Bbox.ymax == object_Bbox[i](3))
-        //         {
-        //             id_object_p[i].insert(std::map<string,float>::value_type(Bbox.Class,Bbox.probability));
-        //             if(MAP_SHOW) cout << "one object with two p happend!" << endl;
-        //             happen_flag=true;
-        //             break;
-        //         }
-        //         // cout << "object_Bbox " << object_Bbox[i] << endl;
+        if(!object_Bbox.empty())
+        {
+            for(int i=0;i<object_Bbox.size();i++)
+            {
+                if(Bbox.xmin == object_Bbox[i](0) && Bbox.xmax == object_Bbox[i](1) && Bbox.ymin == object_Bbox[i](2) && Bbox.ymax == object_Bbox[i](3))
+                {
+                    id_object_p[i].insert(std::map<string,float>::value_type(Bbox.Class,Bbox.probability));
+                    if(MAP_SHOW) cout << "one object with two p happend!" << endl;
+                    happen_flag=true;
+                    break;
+                }
+                // cout << "object_Bbox " << object_Bbox[i] << endl;
                
-        //     }
+            }
             
-        // }
+        }
         if(happen_flag==true) 
             continue;
         
@@ -105,6 +109,8 @@ void Map_Compute::Compute_Object_Map(
         object_p.insert(std::map<string,float>::value_type(Bbox.Class,Bbox.probability));
         // 保存该类别到object
         id_object_p.push_back(object_p);
+
+        Multi_detect.push_back(Bbox.Class);
     }
 
     // std::cout << "!!!!!!!!!!!!!!" << id_object_p.size() << endl;
@@ -117,14 +123,16 @@ void Map_Compute::Compute_Object_Map(
         for(auto iter_ = id_object_p[i].begin();iter_ != id_object_p[i].end(); iter_++)
         {
             if(MAP_DEBUG) cout << "map : " << iter_->first << " : " << iter_->second << endl;
+            
             if(id_object_p[i].size()>1)
             {
+                bool Object_Base_Flag = false;
                 BOOST_FOREACH (boost::property_tree::ptree::value_type &v, office_object)
                 {
                     if(iter_->first == v.first)
                     {
                         float office_object_p = office_object.get<float>(iter_->first);
-                        
+                        Object_Base_Flag = true;
                         if(MAP <= iter_->second*office_object_p)
                         {
                             MAP = iter_->second*office_object_p;
@@ -132,6 +140,15 @@ void Map_Compute::Compute_Object_Map(
                         }
                         if(MAP_SHOW) cout << iter_->first << " : " << iter_->second << " * " << office_object_p << " = " << iter_->second*office_object_p << endl;                      
                         break;
+                    }
+                  
+                }
+                if(!Object_Base_Flag) // 知识库无此物体 按0.01计算
+                {
+                    if(MAP <= iter_->second*0.01)
+                    {
+                        MAP = iter_->second*0.01;
+                        map_name = iter_->first;                        
                     }
                 }  
                 if(MAP_SHOW) cout << iter_->first << " : " << iter_->second << endl;
@@ -143,9 +160,10 @@ void Map_Compute::Compute_Object_Map(
         }
         if(MAP_DEBUG)  cout << "map_name: " << map_name << "p : " << id_object_p[i][map_name] << endl;
 
-        if(id_object_p[i][map_name]>0.70)
+        if(id_object_p[i][map_name]>0.7)
         {
             std::tuple<string,Vector4d,float> after_object_map_one = make_tuple(map_name,object_Bbox[i],id_object_p[i][map_name]);
+            
             after_object_map.push_back(after_object_map_one);
         }
 
@@ -238,10 +256,11 @@ void Map_Compute::Compute_Local_Relationships_Map(
                             for(float k = Sbox_on_object[2]-object_V_local[name_on_object_][2]/2 ; k < Sbox_on_object[2]+object_V_local[name_on_object_][2]/2 ; k = k+object_V_local[name_on_object_][2]/5.0)                    
                             {
                                 Contain_Sample_Count_Sum++;
-                                if(i > min(Sbox_support_object_[0],Sbox_support_object_[6])     //Xmax > Xmin
-                                && i < max(Sbox_support_object_[0],Sbox_support_object_[6])     //Xmax > Xmin
-                                && j > min(Sbox_support_object_[1],Sbox_support_object_[7])     //Ymax > Ymin
-                                && j < max(Sbox_support_object_[1],Sbox_support_object_[7])     //Ymax > Ymin
+                                Vector2d pp(Sbox_on_object[0],Sbox_on_object[1]);                                       
+                                if((pp-a).transpose()*(b-a) > 0
+                                && (pp-a).transpose()*(c-a) > 0
+                                && (pp-d).transpose()*(b-d) > 0
+                                && (pp-d).transpose()*(c-d) > 0    //Ymax > Ymin
                                 && k > Sbox_support_object_[8]-object_V_local[name_support_object_][2]   //z > Zmin
                                 && k < Sbox_support_object_[8])  //z < Zmax
                                 {
@@ -299,51 +318,55 @@ void Map_Compute::Compute_Local_Relationships_Map(
             {
                 string map_name;
                 float MAP=0;
-                // BOOST_FOREACH (boost::property_tree::ptree::value_type &v, current_relationships) //object层
-                // {
-                //     if(v.first == ob_name)
-                //     {
-                //         boost::property_tree::ptree vt = v.second;
-                //         BOOST_FOREACH (boost::property_tree::ptree::value_type &vtt, vt)  // subject层
-                //         {
-                //             boost::property_tree::ptree vttt = vtt.second;
-                //             if(vtt.first == sub_name)
-                //             {
-                //                 for(auto iter__ = rela_p_all.begin();iter__ != rela_p_all.end(); iter__++)
-                //                 {
-                //                     string rela_all_name = iter__->first;
-                //                     float rela_all_p = iter__->second;
-                //                     BOOST_FOREACH (boost::property_tree::ptree::value_type &vtttt, vttt)  // 关系层
-                //                     {
-                //                         if(rela_all_name == vtttt.first)
-                //                         {
-                //                             if(MAP <= rela_all_p*vttt.get<float>(vtttt.first))
-                //                             {
-                //                                 MAP = rela_all_p*vttt.get<float>(vtttt.first);
-                //                                 map_name = rela_all_name;
-                //                             }
-                //                             if(MAP_DEBUG) cout << rela_all_name << " : " << rela_all_p << " * " << vttt.get<float>(vtttt.first) << " = " << MAP << endl;
-                                            
-                //                         }
-                //                     }
-                //                 }
-                //             }
-                            
-                //         }
-                //     }
-                // }
-
-                // base
-                for(auto iter__ = rela_p_all.begin();iter__ != rela_p_all.end(); iter__++)
+                BOOST_FOREACH (boost::property_tree::ptree::value_type &v, current_relationships) //object层
                 {
-                    string rela_all_name = iter__->first;
-                    float rela_all_p = iter__->second;
-                    if(MAP <= rela_all_p)
+                    string::size_type idx;
+                    idx = ob_name.find(v.first);
+                    if(idx != string::npos)
                     {
-                        MAP = rela_all_p;
-                        map_name = rela_all_name;
+                        boost::property_tree::ptree vt = v.second;
+                        BOOST_FOREACH (boost::property_tree::ptree::value_type &vtt, vt)  // subject层
+                        {
+                            boost::property_tree::ptree vttt = vtt.second;
+                            string::size_type idxx;
+                            idxx = sub_name.find(vtt.first);
+                            if(idxx != string::npos)
+                            {
+                                for(auto iter__ = rela_p_all.begin();iter__ != rela_p_all.end(); iter__++)
+                                {
+                                    string rela_all_name = iter__->first;
+                                    float rela_all_p = iter__->second;
+                                    BOOST_FOREACH (boost::property_tree::ptree::value_type &vtttt, vttt)  // 关系层
+                                    {
+                                        if(rela_all_name == vtttt.first)
+                                        {
+                                            if(MAP <= rela_all_p*vttt.get<float>(vtttt.first))
+                                            {
+                                                MAP = rela_all_p*vttt.get<float>(vtttt.first);
+                                                map_name = rela_all_name;
+                                            }
+                                            if(MAP_DEBUG) cout << rela_all_name << " : " << rela_all_p << " * " << vttt.get<float>(vtttt.first) << " = " << MAP << endl;
+                                            
+                                        }
+                                    }
+                                }
+                            }
+                            
+                        }
                     }
                 }
+
+                // base
+                // for(auto iter__ = rela_p_all.begin();iter__ != rela_p_all.end(); iter__++)
+                // {
+                //     string rela_all_name = iter__->first;
+                //     float rela_all_p = iter__->second;
+                //     if(MAP <= rela_all_p)
+                //     {
+                //         MAP = rela_all_p;
+                //         map_name = rela_all_name;
+                //     }
+                // }
 
 
                 if(MAP_DEBUG) cout << "map_name : " << map_name << endl;
@@ -440,7 +463,7 @@ void Map_Compute::Compute_Globe_Relationships_Map(
             float rela_on_p=Support_Sample_Sum>0?float(Support_Sample_Count*Rela_Function/Support_Sample_Sum):0;
             if(Support_Sample_Count>0) cout << "name_on_object_ : " << name_on_object_  << "  Support_Sample_Count : " << Support_Sample_Count << "later : " << rela_on_p << endl;
             
-            if(rela_p.count("ON") == 0 && rela_on_p>0.2)
+            if(rela_p.count("ON") == 0 && rela_on_p>0.5)
             {
                 rela_p.insert(map<string, float>::value_type("ON", rela_on_p));     
             }             
@@ -455,10 +478,11 @@ void Map_Compute::Compute_Globe_Relationships_Map(
                     for(float k = Sbox_on_object[2]-object_V[name_on_object_][2]/2 ; k < Sbox_on_object[2]+object_V[name_on_object_][2]/2 ; k = k+object_V[name_on_object_][2]/5.0)                    
                     {
                         Contain_Sample_Count_Sum++;
-                        if(i > min(Sbox_support_object_[0],Sbox_support_object_[6])     //Xmax > Xmin
-                        && i < max(Sbox_support_object_[0],Sbox_support_object_[6])     //Xmax > Xmin
-                        && j > min(Sbox_support_object_[1],Sbox_support_object_[7])     //Ymax > Ymin
-                        && j < max(Sbox_support_object_[1],Sbox_support_object_[7])     //Ymax > Ymin
+                        Vector2d pp(Sbox_on_object[0],Sbox_on_object[1]);                                       
+                        if((pp-a).transpose()*(b-a) > 0
+                        && (pp-a).transpose()*(c-a) > 0
+                        && (pp-d).transpose()*(b-d) > 0
+                        && (pp-d).transpose()*(c-d) > 0     //Ymax > Ymin
                         && k > Sbox_support_object_[8]-object_V[name_support_object_][2]   //z > Zmin
                         && k < Sbox_support_object_[8])  //z < Zmax
                         {
@@ -470,7 +494,7 @@ void Map_Compute::Compute_Globe_Relationships_Map(
             float rela_contain_p=Contain_Sample_Count_Sum>0?float(Contain_Sample_Count/Contain_Sample_Count_Sum):0;   
             if(Contain_Sample_Count>0) cout << "name_on_object_ : " << name_on_object_  << "  Contain_Sample_Count : " << Contain_Sample_Count << "later : " << rela_contain_p << endl << endl;
                             
-            if(rela_p.count("IN") == 0 && rela_contain_p>0.2)
+            if(rela_p.count("IN") == 0 && rela_contain_p>0.5)
             {
                 rela_p.insert(map<string, float>::value_type("IN", rela_contain_p));                     
             }
@@ -531,71 +555,94 @@ void Map_Compute::Compute_Globe_Relationships_Map(
             if(MAP_DEBUG) cout << "ob_name : " << ob_name << endl;
             std::map<string, float> rela_p_all = iter_->second;
             if(MAP_DEBUG) cout << "rela_p_all.size:" << rela_p_all.size() << endl;
+            string rela_;
+            float rela_p_=0;
 
             // 若出现多个关系概率，使用map进行验证
             if(rela_p_all.size()>1)
             {
                 string map_name;
                 float MAP=0;
-                // BOOST_FOREACH (boost::property_tree::ptree::value_type &v, current_relationships) //object层
-                // {
-                //     if(v.first == ob_name)
-                //     {
-                //         boost::property_tree::ptree vt = v.second;
-                //         BOOST_FOREACH (boost::property_tree::ptree::value_type &vtt, vt)  // subject层
-                //         {
-                //             boost::property_tree::ptree vttt = vtt.second;
-                //             if(vtt.first == sub_name)
-                //             {
-                //                 for(auto iter__ = rela_p_all.begin();iter__ != rela_p_all.end(); iter__++)
-                //                 {
-                //                     string rela_all_name = iter__->first;
-                //                     float rela_all_p = iter__->second;
-                //                     BOOST_FOREACH (boost::property_tree::ptree::value_type &vtttt, vttt)  // 关系层
-                //                     {
-                //                         if(rela_all_name == vtttt.first)
-                //                         {
-                //                             if(MAP <= rela_all_p*vttt.get<float>(vtttt.first))
-                //                             {
-                //                                 MAP = rela_all_p*vttt.get<float>(vtttt.first);
-                //                                 map_name = rela_all_name;
-                //                             }
-                //                             if(MAP_DEBUG) cout << rela_all_name << " : " << rela_all_p << " * " << vttt.get<float>(vtttt.first) << " = " << MAP << endl;
-                                            
-                //                         }
-                //                     }
-                //                 }
-                //             }
-                            
-                //         }
-                //     }
-                // }
-
-                // base
                 for(auto iter__ = rela_p_all.begin();iter__ != rela_p_all.end(); iter__++)
                 {
                     string rela_all_name = iter__->first;
                     float rela_all_p = iter__->second;
-                    if(MAP <= rela_all_p)
+                    bool Rela_Flag = false;
+                    BOOST_FOREACH (boost::property_tree::ptree::value_type &v, current_relationships) //object层
                     {
-                        MAP = rela_all_p;
-                        map_name = rela_all_name;
+                        string::size_type idx;
+                        idx = ob_name.find(v.first);
+                        if(idx != string::npos)
+                        {
+                            boost::property_tree::ptree vt = v.second;
+                            BOOST_FOREACH (boost::property_tree::ptree::value_type &vtt, vt)  // subject层
+                            {
+                                boost::property_tree::ptree vttt = vtt.second;
+                                string::size_type idxx;
+                                idxx = sub_name.find(vtt.first);
+                                if(idxx != string::npos)
+                                {
+                                    BOOST_FOREACH (boost::property_tree::ptree::value_type &vtttt, vttt)  // 关系层
+                                    {
+                                        if(rela_all_name == vtttt.first)
+                                        {
+                                            if(MAP <= rela_all_p*vttt.get<float>(vtttt.first))
+                                            {
+                                                MAP = rela_all_p*vttt.get<float>(vtttt.first);
+                                                map_name = rela_all_name;
+                                            }
+                                            Rela_Flag = true;
+                                            if(MAP_DEBUG) cout << rela_all_name << " : " << rela_all_p << " * " << vttt.get<float>(vtttt.first) << " = " << MAP << endl;
+                                            
+                                        }
+                                    }
+                                }
+                            }
+                            
+                        }
+                    }
+
+                    if(!Rela_Flag) //未在先验中查询到
+                    {
+                        if(MAP <= rela_all_p*0.01)
+                        {
+                            MAP = rela_all_p*0.1;
+                            map_name = rela_all_name;
+                        }
                     }
                 }
 
-                if(MAP_DEBUG) cout << "map_name : " << map_name << endl;
+                
 
+                // base
+                // for(auto iter__ = rela_p_all.begin();iter__ != rela_p_all.end(); iter__++)
+                // {
+                //     string rela_all_name = iter__->first;
+                //     float rela_all_p = iter__->second;
+                //     if(MAP <= rela_all_p)
+                //     {
+                //         MAP = rela_all_p;
+                //         map_name = rela_all_name;
+                //     }
+                // }
+
+                if(MAP_DEBUG) cout << "map_name : " << map_name << endl;
+                rela_ = map_name;
+                rela_p_ = rela_p_all[map_name];
                 rela_after_map_one = std::make_tuple(ob_name,sub_name,map_name,rela_p_all[map_name]);
                 
             }
             else 
             {
+                rela_ = rela_p_all.begin()->first;
+                rela_p_ = rela_p_all.begin()->second;
                 rela_after_map_one = std::make_tuple(ob_name,sub_name,
                                                     rela_p_all.begin()->first,
                                                     rela_p_all.begin()->second);
             }
 
             rela_after_map.push_back(rela_after_map_one);
+
 
             // record the sum probability
             BOOST_FOREACH (boost::property_tree::ptree::value_type &v, current_relationships) //object层
@@ -619,6 +666,26 @@ void Map_Compute::Compute_Globe_Relationships_Map(
         }
 
     }
+
+
+    // 同一对物体检测到多个关系
+    // for(int t=0;t<rela_after_map.size();t++)
+    // {
+    //     string repeat_ob_name, repeat_sub_name, repeat_relation;
+    //     float repeat_p;
+    //     auto tp2 = std::make_tuple(std::ref(repeat_ob_name), std::ref(repeat_sub_name), std::ref(repeat_relation), std::ref(repeat_p)) = rela_after_map[t];
+
+    //     // 检测重复
+    //     if(ob_name == repeat_ob_name && sub_name == repeat_sub_name)
+    //     {
+    //         if(rela_p_ > repeat_p)
+    //         {
+    //             repeat_relation = rela_;
+    //             repeat_p = rela_p_;
+    //         }
+    //     }
+    // }
+
     
     if(MAP_DEBUG) cout << "rela_after_map size : " << rela_after_map.size() << endl;
     
