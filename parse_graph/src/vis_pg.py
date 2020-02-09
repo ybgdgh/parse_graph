@@ -53,7 +53,7 @@ def add_node(current_scene, object_, pose_x, pose_y, pose_z, color):
             fillcolor=orange_hex, fontcolor='black')
 
     sg.node('relation'+str(object_), shape='box', style='filled,rounded',
-            label='address', margin='0.11, 0.0001', width='0.11', height='0',
+            label='relation', margin='0.11, 0.0001', width='0.11', height='0',
             fillcolor=orange_hex, fontcolor='black')
 
     sg.node('attribute_pose_'+str(object_), shape='box', style='filled, rounded',
@@ -113,11 +113,11 @@ def viz_pg():
         resized = pad
     else:
         resized = cv2.resize(img, (int(1920*resize_x), int(1080*resize_y)))
-    print("output image!")
-    
+  
     cv2.imshow('3D Scene Graph', resized)
     cv2.moveWindow('3D Scene Graph', 650, 0)
     cv2.waitKey(1)
-
+    print("output image!")
+    
     sg.clear()
     

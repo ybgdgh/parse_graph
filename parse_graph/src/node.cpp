@@ -8,7 +8,7 @@
 
 #include "node.h"
 
-bool Base_Flag,Scannet_Flag;
+bool Base_Flag,Scannet_Flag,Save_Image_Flag;
 string Yolo_Base[10] = { 
                         "cup",
                         "mouse",
@@ -21,6 +21,8 @@ string Yolo_Base[10] = {
                         "phone",
                         "remote"
                     };
+
+int output_image_count=0;
 
 
 // 计算坐标对应的color
@@ -76,6 +78,7 @@ Parse_Node::Parse_Node(ros::NodeHandle nh,ros::NodeHandle np)
 {
     nh_.param<bool>("Base_Flag",Base_Flag,false);
     nh_.param<bool>("Scannet_Flag",Scannet_Flag,false);
+    nh_.param<bool>("Save_Image_Flag",Save_Image_Flag,false);
     
     //订阅odom和激光的话题
     sub_ar_track = nh_.subscribe("tag_detections", 10, &Parse_Node::tag_detections_mark,this);
@@ -177,9 +180,9 @@ Parse_Node::~Parse_Node()
     
             attribute["color"]=Json::Value(Rgb_color[name_support_object]);
             attribute.removeMember("size");
-            attribute["size"].append(double((int)(object_V[name_support_object][0]*1000+0.5f)/1000.0));
-            attribute["size"].append(double((int)(object_V[name_support_object][1]*1000+0.5f)/1000.0));
-            attribute["size"].append(double((int)(object_V[name_support_object][2]*1000+0.5f)/1000.0));
+            attribute["size"].append(float((int)(object_V[name_support_object][0]*1000+0.5f)/1000.0));
+            attribute["size"].append(float((int)(object_V[name_support_object][1]*1000+0.5f)/1000.0));
+            attribute["size"].append(float((int)(object_V[name_support_object][2]*1000+0.5f)/1000.0));
   
             object["attribute"] = attribute;
      
@@ -218,9 +221,9 @@ Parse_Node::~Parse_Node()
                 
                 attribute["color"]=Json::Value(Rgb_color[name_on_object]);
                 attribute.removeMember("size");
-                attribute["size"].append(double((int)(object_V[name_on_object][0]*1000+0.5f)/1000.0));
-                attribute["size"].append(double((int)(object_V[name_on_object][1]*1000+0.5f)/1000.0));
-                attribute["size"].append(double((int)(object_V[name_on_object][2]*1000+0.5f)/1000.0));
+                attribute["size"].append(float((int)(object_V[name_on_object][0]*1000+0.5f)/1000.0));
+                attribute["size"].append(float((int)(object_V[name_on_object][1]*1000+0.5f)/1000.0));
+                attribute["size"].append(float((int)(object_V[name_on_object][2]*1000+0.5f)/1000.0));
 
                 object["attribute"] = attribute;
 
@@ -258,9 +261,9 @@ Parse_Node::~Parse_Node()
                 
                 attribute["color"]=Json::Value(Rgb_color[name_on_object]);
                 attribute.removeMember("size");
-                attribute["size"].append(double((int)(object_V[name_on_object][0]*1000+0.5f)/1000.0));
-                attribute["size"].append(double((int)(object_V[name_on_object][1]*1000+0.5f)/1000.0));
-                attribute["size"].append(double((int)(object_V[name_on_object][2]*1000+0.5f)/1000.0));
+                attribute["size"].append(float((int)(object_V[name_on_object][0]*1000+0.5f)/1000.0));
+                attribute["size"].append(float((int)(object_V[name_on_object][1]*1000+0.5f)/1000.0));
+                attribute["size"].append(float((int)(object_V[name_on_object][2]*1000+0.5f)/1000.0));
 
                 object["attribute"] = attribute;
 
@@ -914,6 +917,7 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
                 Support_box[name]=S_support_object;
                 object_xyz[name]=Vector3d(S_support_object[0],S_support_object[1],S_support_object[8]);
                 object_V[name]=marker_scale;
+                if(Base_Flag)object_V_local[name]=marker_scale;                
                 continue;
             }
             Support_box.insert(std::map<string,Vector9d>::value_type(name,S_support_object));
@@ -921,6 +925,7 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
             object_V.insert(std::map<string,Vector3d>::value_type(name,marker_scale));
             Scene_Relation[current_scene].push_back(name);
             if(!Base_Flag)KFG_AR_Active_Finish = true;
+            if(Base_Flag)object_V_local.insert(std::map<string,Vector3d>::value_type(name,marker_scale));                   
             Rgb_color.insert(std::map<string,string>::value_type(name,Ar_color));
             
         }
@@ -1069,7 +1074,7 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
         r=255*abs(r-255);
         g=255*abs(g-255);
         b=255*abs(b-255);
-        ssss.clear();
+        ssss.str("");
         ssss << float((int)(object_V_local[pose_name][0]*1000+0.5f)/1000.0) << "," 
             << float((int)(object_V_local[pose_name][1]*1000+0.5f)/1000.0) << "," 
             << float((int)(object_V_local[pose_name][2]*1000+0.5f)/1000.0);
@@ -1458,9 +1463,8 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
         contian_relationships_local.clear();
         contian_relationships_local.insert(contian_relationships.begin(),contian_relationships.end());
 
-        
-
-
+      
+/*
         // graphviz 
         // 添加场景
         for(auto iter = Scene_Relation.begin();iter != Scene_Relation.end(); iter++)
@@ -1535,8 +1539,8 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
 
         // update date
         PyEval_CallObject(pFunc_viz, NULL); 
-
-
+*/
+/*
         int rows = 600;
         int cols = 200+(Support_box.size() + On_box.size())*200;
         int x_ = cols/2;
@@ -1648,11 +1652,25 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
             pub_pg_show.publish(pg_msg);
 
         }
-
+*/
     }
     
 
     // 发布带节点关系的图像
+    if(Save_Image_Flag)
+    {
+        if(frame_count == 5)
+        {
+            std::stringstream image_count;
+            image_count << "/home/ybg/ROS_code/catkin_vision/src/parse_graph/vis_result/image_pg/image_" << output_image_count << ".png" << endl;
+            cv::imwrite(image_count.str(),image);
+            output_image_count++;
+            frame_count=0;
+        }
+        frame_count++;
+    }
+    
+    
     sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", image).toImageMsg();
     pub_pic.publish(msg);
 

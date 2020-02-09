@@ -12,6 +12,7 @@
     <node name="parse_graph" pkg="parse_graph" type="parse" output="screen">
         <param name="Base_Flag" type="bool" value="false"/>
         <param name="Scannet_Flag" type="bool" value="false"/>
+        <param name="Save_Image_Flag" type="bool" value="false"/>
     </node>
 
     <!--<include file="$(find pub_marker)/launch/shapes.launch" />-->
