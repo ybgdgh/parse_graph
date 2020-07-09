@@ -90,6 +90,9 @@ class Parse_Node
 
     void PublishMarker(std::map<string,Vector3d> object_V);
 
+    void dark_detect_Callback(const sensor_msgs::ImageConstPtr& image_msg);
+
+
 
     inline boost::property_tree::ptree
     loadPoseFile(const std::string &json_filename)
@@ -192,7 +195,7 @@ class Parse_Node
 
     ros::Subscriber sub_ar_track;
 
-    ros::Subscriber sub_darknet,sub_CameraInfo,sub_depth_camera,sub_color_camera,sub_mask_rcnn;
+    ros::Subscriber sub_darknet,sub_CameraInfo,sub_depth_camera,sub_color_camera,sub_mask_rcnn,sub_dark_detect_camera;
 
     ros::Publisher pub_pg_show,pub_pic;
     ros::Publisher marker_pub;

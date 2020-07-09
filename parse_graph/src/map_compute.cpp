@@ -247,7 +247,7 @@ void Map_Compute::Compute_Local_Relationships_Map(
                     float rela_on_p=Support_Sample_Sum>0?float(Support_Sample_Count*Rela_Function/Support_Sample_Sum):0;
                     if(rela_on_p>0) cout << "name_on_object_ : " << name_on_object_  << "  Support_Sample_Count : " << Support_Sample_Count << "later : " << rela_on_p << endl;
                     
-                    if(rela_p.count("ON") == 0 && rela_on_p>0.2)
+                    if(rela_p.count("ON") == 0 && rela_on_p>0.5)
                     {
                         rela_p.insert(map<string, float>::value_type("ON", rela_on_p));     
                     }             
@@ -276,7 +276,7 @@ void Map_Compute::Compute_Local_Relationships_Map(
                     // if(Contain_Sample_Count_Sum>0) cout << "Contain_Sample_Count_Sum : " << Contain_Sample_Count_Sum << endl;                    
                     // if(Contain_Sample_Count_Sum>0) cout << "Contain_Sample_Count : " << Contain_Sample_Count << endl;
                     float rela_contain_p=Contain_Sample_Count_Sum>0?float(Contain_Sample_Count/Contain_Sample_Count_Sum):0;       
-                    if(rela_contain_p>0) cout << "name_on_object_ : " << name_on_object_  << "  Contain_Sample_Count : " << Contain_Sample_Count << "later : " << rela_contain_p << endl << endl;
+                    // if(rela_contain_p>0) cout << "name_on_object_ : " << name_on_object_  << "  Contain_Sample_Count : " << Contain_Sample_Count << "later : " << rela_contain_p << endl << endl;
                                 
                     if(rela_p.count("IN") == 0 && rela_contain_p>0.2)
                     {

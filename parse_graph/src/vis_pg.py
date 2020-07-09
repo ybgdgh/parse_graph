@@ -36,7 +36,7 @@ def add_scene(scene):
     sg.edge('struct_scene', 'struct'+str(scene))
     
 
-def add_node(current_scene, object_, pose_x, pose_y, pose_z, color):
+def add_node(current_scene, object_, pose_x, pose_y, pose_z, size_x, size_y, size_z, color):
     print("add node for parse graph" )
     print(object_)
     
@@ -68,11 +68,19 @@ def add_node(current_scene, object_, pose_x, pose_y, pose_z, color):
             margin='0.11, 0.0001', width='0.11', height='0',
             fillcolor=blue_hex, fontcolor='black')
 
+    sg.node('attribute_size_'+str(object_), shape='box', style='filled, rounded',
+            label="("+str(round(float(size_x), 1))+"," +
+            str(round(float(size_y), 1))+"," +
+            str(round(float(size_z), 1)) + ")",
+            margin='0.11, 0.0001', width='0.11', height='0',
+            fillcolor=blue_hex, fontcolor='black')
+
     sg.edge('struct'+str(current_scene), 'struct'+str(object_))
     sg.edge('struct'+str(object_),'regular'+str(object_))
     sg.edge('struct'+str(object_),'address'+str(object_))
     sg.edge('regular'+str(object_), 'attribute_pose_'+str(object_))
     sg.edge('regular'+str(object_), 'attribute_color_'+str(object_))
+    sg.edge('regular'+str(object_), 'attribute_size_'+str(object_))
     sg.edge('address'+str(object_), 'relation'+str(object_))
 
 
@@ -90,32 +98,32 @@ def viz_pg():
     print("update parse graph!")
     sg.render(osp.join(save_path, 'scene_graph'), view=False)
     img = cv2.imread(osp.join(save_path, 'scene_graph'+'.png'), cv2.IMREAD_COLOR)
-    resize_x = 0.65
-    resize_y = 0.9
-    if img.shape[1] < int(1920*resize_x) and img.shape[0] < int(1080*resize_y):
-        pad = cv2.resize(img.copy(), (int(1920*resize_x), int(1080*resize_y)))
-        pad.fill(255)
-        pad[:img.shape[0], :img.shape[1], :] = img
-        resized = pad
-    elif img.shape[1] < int(1920*resize_x):
-        pad = cv2.resize(
-            img.copy(), (int(1920 * resize_x), int(1080 * resize_y)))
-        pad.fill(255)
-        img = cv2.resize(img, (img.shape[1], int(1080 * resize_y)))
-        pad[:img.shape[0], :img.shape[1], :] = img
-        resized = pad
-    elif img.shape[0] < int(1080*resize_y):
-        pad = cv2.resize(
-            img.copy(), (int(1920 * resize_x), int(1080 * resize_y)))
-        pad.fill(255)
-        img = cv2.resize(img, (int(1920 * resize_x), img.shape[0]))
-        pad[:img.shape[0], :img.shape[1], :] = img
-        resized = pad
-    else:
-        resized = cv2.resize(img, (int(1920*resize_x), int(1080*resize_y)))
+    resize_x = 1;#0.65
+    resize_y = 0.4;#0.9
+    # if img.shape[1] < int(1920*resize_x) and img.shape[0] < int(1080*resize_y):
+    #     pad = cv2.resize(img.copy(), (int(1920*resize_x), int(1080*resize_y)))
+    #     pad.fill(255)
+    #     pad[:img.shape[0], :img.shape[1], :] = img
+    #     resized = pad
+    # elif img.shape[1] < int(1920*resize_x):
+    #     pad = cv2.resize(
+    #         img.copy(), (int(1920 * resize_x), int(1080 * resize_y)))
+    #     pad.fill(255)
+    #     img = cv2.resize(img, (img.shape[1], int(1080 * resize_y)))
+    #     pad[:img.shape[0], :img.shape[1], :] = img
+    #     resized = pad
+    # elif img.shape[0] < int(1080*resize_y):
+    #     pad = cv2.resize(
+    #         img.copy(), (int(1920 * resize_x), int(1080 * resize_y)))
+    #     pad.fill(255)
+    #     img = cv2.resize(img, (int(1920 * resize_x), img.shape[0]))
+    #     pad[:img.shape[0], :img.shape[1], :] = img
+    #     resized = pad
+    # else:
+    resized = cv2.resize(img, (int(1920*resize_x), int(1080*resize_y)))
   
     cv2.imshow('3D Scene Graph', resized)
-    cv2.moveWindow('3D Scene Graph', 650, 0)
+    cv2.moveWindow('3D Scene Graph', 0, 0)
     cv2.waitKey(1)
     print("output image!")
     

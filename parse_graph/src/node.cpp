@@ -76,7 +76,7 @@ Parse_Node::Parse_Node(ros::NodeHandle nh,ros::NodeHandle np)
 :nh_(nh),
  np_(np)
 {
-    nh_.param<bool>("Base_Flag",Base_Flag,false);
+    nh_.param<bool>("Base_Flag",Base_Flag,true);
     nh_.param<bool>("Scannet_Flag",Scannet_Flag,false);
     nh_.param<bool>("Save_Image_Flag",Save_Image_Flag,false);
     
@@ -88,6 +88,7 @@ Parse_Node::Parse_Node(ros::NodeHandle nh,ros::NodeHandle np)
     sub_depth_camera = nh_.subscribe("/camera/aligned_depth_to_color/image_raw", 10, &Parse_Node::depth_Callback,this);
 
     sub_color_camera = nh_.subscribe("/camera/color/image_raw", 10, &Parse_Node::color_Callback,this);
+    sub_dark_detect_camera = nh_.subscribe("/darknet_ros/detection_image", 10, &Parse_Node::dark_detect_Callback,this);
 
     pub_pic = nh_.advertise<sensor_msgs::Image>("kg_camera", 10);
     pub_pg_show = nh_.advertise<sensor_msgs::Image>("pg_show", 10);
@@ -468,7 +469,7 @@ void Parse_Node::darknet_Bbox(const darknet_ros_msgs::BoundingBoxes& Bound_msg)
                         float max_distance = (a>=b&&a>=c)?a:(b>=a&&b>=c)?b:c;
                         
                         // 0.25为阈值，调整max_distance参数
-                        if(max_distance < 0.25) max_distance=max_distance*2;
+                        if(max_distance < 0.20) max_distance=max_distance*2;
                         
                         if(abs(S_darknet_object[0]-object_xyz_local[other_class_name][0])<max_distance &&
                             abs(S_darknet_object[1]-object_xyz_local[other_class_name][1])<max_distance &&
@@ -959,6 +960,7 @@ void Parse_Node::tag_detections_mark(const apriltag_ros::AprilTagDetectionArray&
 
 int scannet_count=0;
 int frame_count=0;
+int local_show_count=0;
 void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
 {
     cv_bridge::CvImagePtr cv_ptr;
@@ -1047,6 +1049,8 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
     //yolo
     for(auto iter = object_2d_pose.begin();iter != object_2d_pose.end(); iter++)
     {
+        add = 15;
+        r=0,g=255,b=255;
         string pose_name = iter->first;
         Vector2d pose_d = iter->second;
 
@@ -1079,6 +1083,18 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
             << float((int)(object_V_local[pose_name][1]*1000+0.5f)/1000.0) << "," 
             << float((int)(object_V_local[pose_name][2]*1000+0.5f)/1000.0);
         cv::putText(image, "size", cv::Point(pose_d[0]+10,pose_d[1]+add), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(r, g, b), 0.5, 8, 0);
+        cv::putText(image, ":", cv::Point(pose_d[0]+70,pose_d[1]+add), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(r, g, b), 0.5, 8, 0);
+        cv::putText(image, ssss.str(), cv::Point(pose_d[0]+80,pose_d[1]+add), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(r, g, b), 0.5, 8, 0);
+           
+        add = add+15; 
+        r=255*abs(r-255);
+        g=255*abs(g-255);
+        b=255*abs(b-255);
+        ssss.str("");
+        ssss << float((int)(object_xyz_local[pose_name][0]*1000+0.5f)/1000.0) << "," 
+            << float((int)(object_xyz_local[pose_name][1]*1000+0.5f)/1000.0) << "," 
+            << float((int)(object_xyz_local[pose_name][2]*1000+0.5f)/1000.0);
+        cv::putText(image, "position", cv::Point(pose_d[0]+10,pose_d[1]+add), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(r, g, b), 0.5, 8, 0);
         cv::putText(image, ":", cv::Point(pose_d[0]+70,pose_d[1]+add), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(r, g, b), 0.5, 8, 0);
         cv::putText(image, ssss.str(), cv::Point(pose_d[0]+80,pose_d[1]+add), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(r, g, b), 0.5, 8, 0);
            
@@ -1270,6 +1286,93 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
         }
 
     }
+
+
+    if(Base_Flag && local_show_count>100)
+    {
+        local_show_count=0;
+        // graphviz 
+        // 添加场景
+        for(auto iter = Scene_Relation.begin();iter != Scene_Relation.end(); iter++)
+        {
+            string scene_name = iter->first;
+            std::vector<string> simple_scene = iter->second;
+
+            PyObject *pArgs_scene = PyTuple_New(1);                 //函数调用的参数传递均是以元组的形式打包的,4表示参数个数
+            PyTuple_SetItem(pArgs_scene, 0, PyString_FromString(scene_name.c_str())); //0--序号,i表示创建int型变量
+
+            PyEval_CallObject(pFunc_scene, pArgs_scene); //调用函数
+            
+
+            // 添加节点
+            for(auto iter = object_V_local.begin();iter != object_V_local.end(); iter++)
+            {
+                string object_name = iter->first;
+                Vector3d object_xyz_ = object_xyz_local[object_name];
+                Vector3d object_V_ = iter->second;
+
+                if(std::find(simple_scene.begin(), simple_scene.end(), object_name) == simple_scene.end()) 
+                    continue;
+
+                //创建参数:
+                PyObject *pArgs_node = PyTuple_New(9);                 //函数调用的参数传递均是以元组的形式打包的,4表示参数个数
+                PyTuple_SetItem(pArgs_node, 0, Py_BuildValue("s", scene_name.c_str())); //0--序号,i表示创建int型变量
+                PyTuple_SetItem(pArgs_node, 1, Py_BuildValue("s", object_name.c_str())); //0--序号,i表示创建int型变量
+                PyTuple_SetItem(pArgs_node, 2, Py_BuildValue("f", double((int)(object_xyz_[0]*1000+0.5f)/1000.0))); //1--序号
+                PyTuple_SetItem(pArgs_node, 3, Py_BuildValue("f", double((int)(object_xyz_[1]*1000+0.5f)/1000.0))); //2--序号
+                PyTuple_SetItem(pArgs_node, 4, Py_BuildValue("f", double((int)(object_xyz_[2]*1000+0.5f)/1000.0))); //3--序号
+                PyTuple_SetItem(pArgs_node, 5, Py_BuildValue("f", double((int)(object_V_[0]*1000+0.5f)/1000.0))); //1--序号
+                PyTuple_SetItem(pArgs_node, 6, Py_BuildValue("f", double((int)(object_V_[1]*1000+0.5f)/1000.0))); //2--序号
+                PyTuple_SetItem(pArgs_node, 7, Py_BuildValue("f", double((int)(object_V_[2]*1000+0.5f)/1000.0))); //3--序号
+                PyTuple_SetItem(pArgs_node, 8, Py_BuildValue("s", Rgb_color[object_name].c_str())); //4--序号
+                // 无返回值
+                PyEval_CallObject(pFunc_node, pArgs_node); //调用函数
+
+            }
+
+        }
+
+        // 添加关系
+        for(auto iter = support_relationships_local.begin();iter != support_relationships_local.end(); iter++)
+        {
+            
+            std::string name_on = iter->first;
+            std::string name_support = iter->second;
+            
+            // 添加关系
+            //创建参数:
+            PyObject *pArgs_rela = PyTuple_New(3);                 //函数调用的参数传递均是以元组的形式打包的,4表示参数个数
+            PyTuple_SetItem(pArgs_rela, 0, Py_BuildValue("s", name_on.c_str())); //0--序号,i表示创建int型变量
+            PyTuple_SetItem(pArgs_rela, 1, Py_BuildValue("s", name_support.c_str())); //1--序号
+            PyTuple_SetItem(pArgs_rela, 2, Py_BuildValue("s", "on")); //2--序号
+            // 无返回值
+            PyEval_CallObject(pFunc_rela, pArgs_rela); //调用函数
+
+        }
+
+        for(auto iter = contian_relationships_local.begin();iter != contian_relationships_local.end(); iter++)
+        {
+            
+            std::string name_in = iter->first;
+            std::string name_out = iter->second;
+            
+            // 添加关系
+            //创建参数:
+            PyObject *pArgs_rela = PyTuple_New(3);                 //函数调用的参数传递均是以元组的形式打包的,4表示参数个数
+            PyTuple_SetItem(pArgs_rela, 0, Py_BuildValue("s", name_in.c_str())); //0--序号,i表示创建int型变量
+            PyTuple_SetItem(pArgs_rela, 1, Py_BuildValue("s", name_out.c_str())); //1--序号
+            PyTuple_SetItem(pArgs_rela, 2, Py_BuildValue("s", "in")); //2--序号
+            // 无返回值
+            PyEval_CallObject(pFunc_rela, pArgs_rela); //调用函数
+
+        }
+
+        // update date
+        PyEval_CallObject(pFunc_viz, NULL); 
+
+    }
+    local_show_count++;
+
         
         
     std::stringstream sss;
@@ -1464,7 +1567,7 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
         contian_relationships_local.insert(contian_relationships.begin(),contian_relationships.end());
 
       
-/*
+
         // graphviz 
         // 添加场景
         for(auto iter = Scene_Relation.begin();iter != Scene_Relation.end(); iter++)
@@ -1483,18 +1586,22 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
             {
                 string object_name = iter->first;
                 Vector3d object_xyz_ = iter->second;
+                Vector3d object_V_ = object_V[object_name];
 
                 if(std::find(simple_scene.begin(), simple_scene.end(), object_name) == simple_scene.end()) 
                     continue;
 
                 //创建参数:
-                PyObject *pArgs_node = PyTuple_New(6);                 //函数调用的参数传递均是以元组的形式打包的,4表示参数个数
+                PyObject *pArgs_node = PyTuple_New(9);                 //函数调用的参数传递均是以元组的形式打包的,4表示参数个数
                 PyTuple_SetItem(pArgs_node, 0, Py_BuildValue("s", scene_name.c_str())); //0--序号,i表示创建int型变量
                 PyTuple_SetItem(pArgs_node, 1, Py_BuildValue("s", object_name.c_str())); //0--序号,i表示创建int型变量
                 PyTuple_SetItem(pArgs_node, 2, Py_BuildValue("f", double((int)(object_xyz_[0]*1000+0.5f)/1000.0))); //1--序号
                 PyTuple_SetItem(pArgs_node, 3, Py_BuildValue("f", double((int)(object_xyz_[1]*1000+0.5f)/1000.0))); //2--序号
                 PyTuple_SetItem(pArgs_node, 4, Py_BuildValue("f", double((int)(object_xyz_[2]*1000+0.5f)/1000.0))); //3--序号
-                PyTuple_SetItem(pArgs_node, 5, Py_BuildValue("s", Rgb_color[object_name].c_str())); //4--序号
+                PyTuple_SetItem(pArgs_node, 5, Py_BuildValue("f", double((int)(object_V_[0]*1000+0.5f)/1000.0))); //1--序号
+                PyTuple_SetItem(pArgs_node, 6, Py_BuildValue("f", double((int)(object_V_[1]*1000+0.5f)/1000.0))); //2--序号
+                PyTuple_SetItem(pArgs_node, 7, Py_BuildValue("f", double((int)(object_V_[2]*1000+0.5f)/1000.0))); //3--序号
+                PyTuple_SetItem(pArgs_node, 8, Py_BuildValue("s", Rgb_color[object_name].c_str())); //4--序号
                 // 无返回值
                 PyEval_CallObject(pFunc_node, pArgs_node); //调用函数
 
@@ -1539,7 +1646,7 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
 
         // update date
         PyEval_CallObject(pFunc_viz, NULL); 
-*/
+
 /*
         int rows = 600;
         int cols = 200+(Support_box.size() + On_box.size())*200;
@@ -1662,7 +1769,7 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
         if(frame_count == 5)
         {
             std::stringstream image_count;
-            image_count << "/home/ybg/ROS_code/catkin_vision/src/parse_graph/vis_result/image_pg/image_" << output_image_count << ".png" << endl;
+            image_count << "/home/ybg/ROS_code/catkin_vision/src/parse_graph/vis_result/image_pg/image_" << output_image_count << ".png";
             cv::imwrite(image_count.str(),image);
             output_image_count++;
             frame_count=0;
@@ -1682,6 +1789,36 @@ void Parse_Node::color_Callback(const sensor_msgs::ImageConstPtr& image_msg)
 
 }
 
+int dark_frame_count=0;
+int dark_output_image_count=0;
+void Parse_Node::dark_detect_Callback(const sensor_msgs::ImageConstPtr& image_msg)
+{
+    cv_bridge::CvImagePtr cv_ptr;
+    try
+    {
+      cv_ptr = cv_bridge::toCvCopy(image_msg, sensor_msgs::image_encodings::BGR8);
+    }
+    catch (cv_bridge::Exception& e)
+    {
+      ROS_ERROR("cv_bridge exception: %s", e.what());
+      return;
+    }
+
+    cv::Mat dark_image = cv_ptr->image;
+
+    // if(Save_Image_Flag)
+    {
+        if(dark_frame_count == 5)
+        {
+            std::stringstream image_count;
+            image_count << "/home/ybg/ROS_code/catkin_vision/src/parse_graph/vis_result/dark_image/image_" << dark_output_image_count << ".png";
+            cv::imwrite(image_count.str(),dark_image);
+            dark_output_image_count++;
+            dark_frame_count=0;
+        }
+        dark_frame_count++;
+    }
+}
 
 
 
