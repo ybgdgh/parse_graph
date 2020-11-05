@@ -50,11 +50,11 @@ The code has been tested only with Python 2.7, CUDA 9.0 on Ubuntu 16.04.
 
 The scene dataset: 
 
-coming soon...
+[rosbag](https://drive.google.com/file/d/1240c6YGeb1wuPbp_4qlhXmR6PRSa4pL4/view?usp=sharing)
 
 The scene prior: 
 
-coming soon...
+[scene priors](https://drive.google.com/file/d/1bhT4rW0O4K1JIqagouDjuOtFaCrdwNVQ/view?usp=sharing)
 
 ## Result
 
